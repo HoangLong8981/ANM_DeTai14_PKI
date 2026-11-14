@@ -1,0 +1,13 @@
+# Unrelated Markov Router simulation files
+BaoCao_MoPhong_Router_QuaTai_Markov.docx
+generate_report.py
+giai_router_markov.py
+hinh1_so_do_chuoi_markov.png
+hinh2_xac_suat_theo_n_va_monte_carlo.png
+hinh3_first_passage_time.png
+ket_qua_mo_phong_router.png
+
+# Python & temporary files
+__pycache__/
+*.pyc
+~$*.docx

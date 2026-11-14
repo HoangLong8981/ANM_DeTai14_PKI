@@ -1,0 +1,564 @@
+================================================================================
+ANM_DeTai14_PKI — VERIFICATION EVIDENCE LOGS
+Environment : Docker Compose (pki-client, pki-web / nginx:1.27-alpine)
+Workspace   : /workspace (c:\Users\admin\Downloads\STUDY\ANM\ANM_DeTai14_PKI)
+Generated   : 2026-11-14T06:37Z (13:37+07:00)
+Notes       : All outputs below are verbatim from commands executed in this
+              session by Worker 1 (infra-config-fixer, labeled) and Worker 2
+              (evidence-verifier).
+================================================================================
+
+================================================================================
+SECTION 1: NGINX CONFIGURATION VERIFICATION
+(api.conf ssl_crl, revoked.conf cleanup, nginx -t, nginx -s reload)
+================================================================================
+
+[Command 1.1] (Worker 2) Check running Docker containers
+$ docker compose ps
+NAME         IMAGE                    COMMAND                  SERVICE   CREATED      STATUS          PORTS
+pki-client   anm_detai14_pki-client   "tail -f /dev/null"      client    9 days ago   Up 26 minutes   
+pki-web      nginx:1.27-alpine        "/docker-entrypoint.…"   web       9 days ago   Up 26 minutes   0.0.0.0:8443->443/tcp, [::]:8443->443/tcp
+
+[Command 1.2] (Worker 2) Inspect /etc/nginx/conf.d/api.conf inside pki-web
+$ docker compose exec -T web cat /etc/nginx/conf.d/api.conf
+server {
+    listen 80;
+    server_name api.lab.local;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name api.lab.local;
+    error_log /var/log/nginx/error.log info;
+
+    ssl_certificate /etc/nginx/certs/api.crt;
+    ssl_certificate_key /etc/nginx/certs/api.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    # Mutual TLS (mTLS) Authentication + Server-side Client CRL Enforcement
+    ssl_client_certificate /etc/nginx/certs/ca-chain.crt;
+    ssl_verify_client on;
+    ssl_verify_depth 2;
+    ssl_crl /etc/nginx/certs/ca-chain.crl.pem;
+
+    location /mtls {
+        default_type application/json;
+        return 200 '{"status": 200, "message": "200 OK - mTLS Authenticated", "auth": "mTLS Authenticated", "client_dn": "$ssl_client_s_dn", "serial": "$ssl_client_serial"}\n';
+    }
+
+    location / {
+        default_type application/json;
+        return 200 '{"status": 200, "service": "api.lab.local", "mtls_required": true}\n';
+    }
+}
+
+[Command 1.3] (Worker 2) Inspect /etc/nginx/conf.d/revoked.conf inside pki-web
+(Confirm redundant non-working ssl_crl / ssl_client_certificate lines removed)
+$ docker compose exec -T web cat /etc/nginx/conf.d/revoked.conf
+server {
+    listen 443 ssl;
+    server_name revoked.lab.local;
+
+    ssl_certificate /etc/nginx/certs/revoked.crt;
+    ssl_certificate_key /etc/nginx/certs/revoked.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Server cert (revoked.crt) is listed in inter.crl.pem;
+    # revocation check of server certificates is performed by clients (TC06).
+
+    location / {
+        default_type text/plain;
+        return 200 "Revoked Certificate Service\n";
+    }
+}
+
+[Command 1.4] (Worker 2) Validate Nginx configuration syntax & runtime test
+$ docker compose exec -T web nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+[Command 1.5] (Worker 1 - infra-config-fixer) Reload Nginx after CRL rebuild
+$ docker compose exec -T web nginx -s reload
+2026/11/14 06:35:30 [notice] 177#177: signal process started
+
+[Command 1.6] (Worker 2) Verify mounted CRL chain file inside pki-web
+(Contains 2 PEM CRL blocks: Intermediate CRL + Root CRL for X509_V_FLAG_CRL_CHECK_ALL)
+$ docker compose exec -T web sh -c "sha256sum /etc/nginx/certs/ca-chain.crl.pem && grep -c 'BEGIN X509 CRL' /etc/nginx/certs/ca-chain.crl.pem"
+daf93b27880b6af972bf612a7ed6cc61b2e979e8000f9cb746e37e637b7baa64  /etc/nginx/certs/ca-chain.crl.pem
+2
+
+
+================================================================================
+SECTION 2: REVOCATION OF alice.crt & CRL REGENERATION
+(index.txt, inter.crl.pem, root.crl.pem, ca-chain.crl.pem)
+================================================================================
+
+[Command 2.1] (Worker 1 - infra-config-fixer) Revoke Alice's certificate (Serial 1002)
+$ docker compose exec -T client openssl ca -config /workspace/pki/config/intermediate-ca.cnf -revoke /workspace/pki/intermediate/certs/alice.crt -crl_reason keyCompromise -batch
+Using configuration from /workspace/pki/config/intermediate-ca.cnf
+Revoking Certificate 1002.
+Database updated
+
+[Command 2.2] (Worker 1 - infra-config-fixer) Regenerate Intermediate CRL & rebuild ca-chain.crl.pem
+$ docker compose exec -T client openssl ca -config /workspace/pki/config/intermediate-ca.cnf -gencrl -out /workspace/pki/intermediate/crl/inter.crl.pem -batch
+(exit code 0; copied to /workspace/artifacts/certs/inter.crl.pem and concatenated with /workspace/artifacts/certs/root.crl.pem into /workspace/artifacts/certs/ca-chain.crl.pem)
+
+[Command 2.3] (Worker 2) Inspect /workspace/pki/intermediate/index.txt
+$ docker compose exec -T client cat /workspace/pki/intermediate/index.txt
+V	271105015938Z		1000	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=secure.lab.local
+R	271105015938Z	261114062019Z,superseded	1001	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=api.lab.local
+R	271105015938Z	261114063506Z,keyCompromise	1002	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Alice/emailAddress=alice@lab.local
+V	200102000000Z		1003	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=expired.lab.local
+R	271105015939Z	261105015939Z,keyCompromise	1004	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=revoked.lab.local
+R	271114061502Z	261114061536Z,keyCompromise	1005	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Bob/emailAddress=bob@lab.local
+V	281113062019Z		1006	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=api.lab.local
+
+[Command 2.4] (Worker 2) Inspect Intermediate CRL (/workspace/artifacts/certs/inter.crl.pem)
+$ docker compose exec -T client openssl crl -in /workspace/artifacts/certs/inter.crl.pem -noout -text
+Certificate Revocation List (CRL):
+        Version 2 (0x1)
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+        Last Update: Nov 14 06:35:11 2026 GMT
+        Next Update: Dec 14 06:35:11 2026 GMT
+        CRL extensions:
+            X509v3 Authority Key Identifier: 
+                59:7A:04:B5:EA:13:E5:2E:E2:20:BB:C2:71:DA:EA:8D:04:33:36:65
+            X509v3 CRL Number: 
+                4100
+Revoked Certificates:
+    Serial Number: 1001
+        Revocation Date: Nov 14 06:20:19 2026 GMT
+        CRL entry extensions:
+            X509v3 CRL Reason Code: 
+                Superseded
+    Serial Number: 1002
+        Revocation Date: Nov 14 06:35:06 2026 GMT
+        CRL entry extensions:
+            X509v3 CRL Reason Code: 
+                Key Compromise
+    Serial Number: 1004
+        Revocation Date: Nov  5 01:59:39 2026 GMT
+        CRL entry extensions:
+            X509v3 CRL Reason Code: 
+                Key Compromise
+    Serial Number: 1005
+        Revocation Date: Nov 14 06:15:36 2026 GMT
+        CRL entry extensions:
+            X509v3 CRL Reason Code: 
+                Key Compromise
+    Signature Algorithm: sha256WithRSAEncryption
+    Signature Value:
+        21:4e:08:50:a9:61:bb:38:b3:0c:04:df:0e:a4:0a:b0:b4:e9:
+        92:8b:28:59:c2:f3:93:58:47:bf:d2:2a:10:19:05:25:19:38:
+        3f:e4:13:9a:ca:7b:36:b5:28:12:e1:68:c2:36:d0:6e:ef:73:
+        c1:c6:ad:b0:4e:4d:a6:19:1e:d1:33:42:fe:17:83:79:f3:8c:
+        f9:16:64:e3:28:04:f9:d4:0a:88:ae:a9:ae:87:fe:d0:b8:fc:
+        29:5a:07:4c:88:de:56:4a:bd:31:5b:3a:0a:9c:35:8b:aa:b0:
+        47:41:99:27:a5:43:79:03:d8:10:96:41:99:67:18:19:31:96:
+        ab:29:35:eb:a5:5f:74:95:9c:86:a5:a5:73:25:82:91:9c:cd:
+        91:f7:c8:77:91:67:14:73:10:57:8e:fc:60:fe:4a:85:03:4c:
+        bc:d3:39:6b:a5:3b:b3:60:c0:dd:db:27:a0:79:42:13:29:94:
+        8f:8b:34:35:0b:ca:09:1f:63:f9:72:23:ed:18:1e:a6:fb:3a:
+        3f:f6:4e:5b:e5:55:fd:44:66:75:40:b0:9c:0b:63:d4:c9:35:
+        7d:37:1c:2d:db:79:f7:42:a7:9d:eb:e3:4f:9e:cf:53:ae:e7:
+        8a:5e:72:52:59:49:a0:ad:ad:16:d8:1e:ae:0f:cb:fd:d0:97:
+        20:9e:7e:e3
+
+[Command 2.5] (Worker 2) Inspect Root CRL (/workspace/artifacts/certs/root.crl.pem) & ca-chain.crl.pem
+$ docker compose exec -T client openssl crl -in /workspace/artifacts/certs/root.crl.pem -noout -text
+Certificate Revocation List (CRL):
+        Version 2 (0x1)
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA
+        Last Update: Nov 14 06:12:22 2026 GMT
+        Next Update: Dec 14 06:12:22 2026 GMT
+        CRL extensions:
+            X509v3 Authority Key Identifier: 
+                92:4E:05:EE:15:AF:0F:D7:93:84:9D:B9:BA:A8:43:E7:C3:75:C6:92
+            X509v3 CRL Number: 
+                4096
+No Revoked Certificates.
+    Signature Algorithm: sha256WithRSAEncryption
+    Signature Value:
+        0c:91:71:55:07:43:f0:e6:9c:92:63:e5:37:6d:d0:31:c8:38:
+        c9:e7:42:23:b1:ce:32:d2:b4:a1:cc:50:f1:56:62:16:9a:a7:
+        7c:9b:fd:b9:0a:44:f8:ac:da:bb:30:3b:b0:c0:d9:c6:c4:72:
+        43:92:79:ca:10:ae:a1:8e:00:33:06:9a:c1:c0:55:16:43:e8:
+        70:47:5c:f0:85:20:47:51:52:4a:6a:62:84:f2:64:33:c2:c0:
+        39:5e:0a:78:ef:79:3d:f1:07:0e:3a:0a:8d:27:e3:47:96:a3:
+        a9:7c:70:4e:28:9e:aa:f7:b6:fb:c4:85:82:31:dc:15:39:20:
+        bc:5f:01:75:d3:17:0f:8f:49:b8:5e:5e:b0:79:2e:98:9c:84:
+        25:d7:a8:31:e6:4b:1d:9d:89:3e:1e:c0:c9:29:e5:04:46:a8:
+        fc:2c:6c:a1:16:89:59:25:39:3d:2f:c0:4a:99:7b:22:97:16:
+        bd:e2:d1:13:3a:12:9a:59:8d:76:54:61:8f:4f:20:1e:44:e9:
+        7d:69:71:fb:19:64:9f:0f:e7:9d:01:9f:b6:67:37:9d:e3:5e:
+        c3:d9:25:91:b9:76:ea:20:62:ef:c6:56:a3:3d:36:23:e9:84:
+        2c:e6:83:86:e1:bd:96:39:80:d4:48:47:5f:19:04:d9:ac:ed:
+        c2:cd:e6:a4:0d:c1:25:c7:9e:db:89:22:ff:e0:e6:7e:10:cb:
+        13:60:5f:d0:64:28:0a:f3:66:35:df:7b:2b:32:08:f3:36:70:
+        d8:b4:c0:3e:28:39:0f:e0:2a:6f:bf:a4:24:6b:06:da:05:9c:
+        bb:f1:22:c4:ee:d1:19:b5:85:02:69:77:12:7d:5e:d7:8e:e5:
+        9b:49:50:df:1c:52:f6:33:91:a6:31:75:44:7a:5e:09:e1:0f:
+        ba:e0:c2:5c:58:27:f2:f1:95:37:a6:47:0e:fd:27:7d:47:6a:
+        49:ad:1f:46:30:00:e6:58:f7:ab:ff:bf:60:0c:fd:bd:d2:bd:
+        86:be:91:34:65:84:79:ca:97:f7:c2:14:57:8d:6c:4b:ef:3a:
+        d2:71:aa:ef:05:f1:8c:15:06:ca:9a:07:de:b4:a8:f7:12:0a:
+        d5:ae:44:34:91:98:5a:db:9f:05:e2:8f:ae:9a:0c:db:19:43:
+        a4:4b:86:62:d3:70:bc:86:4d:bb:7c:81:99:e6:7c:55:f2:6c:
+        c5:17:23:11:78:b0:aa:ee:f0:32:bd:54:12:ca:03:2b:27:13:
+        3d:41:3d:a9:53:91:d9:89:29:b4:24:a3:bc:6e:a2:e0:e3:bd:
+        2d:ed:d9:f3:d7:d0:95:56:d1:c9:6d:26:29:58:aa:29:8c:8e:
+        c0:4c:cd:0b:f4:e8:49:39
+
+$ docker compose exec -T client sh -c "sha256sum /workspace/artifacts/certs/ca-chain.crl.pem && grep -c 'BEGIN X509 CRL' /workspace/artifacts/certs/ca-chain.crl.pem"
+daf93b27880b6af972bf612a7ed6cc61b2e979e8000f9cb746e37e637b7baa64  /workspace/artifacts/certs/ca-chain.crl.pem
+2
+
+
+================================================================================
+SECTION 3: TLS 1.3 & TRUST CHAIN PROOF (SUPPLEMENTING TC02)
+(openssl s_client -tls1_3 -> TLSv1.3 + Verify return code: 0 (ok), curl HTTP 200)
+================================================================================
+
+[Command 3.1] (Worker 2) TLS 1.3 handshake & chain verification against secure.lab.local
+$ docker compose exec -T client sh -c "openssl s_client -connect secure.lab.local:443 -CAfile /workspace/artifacts/certs/ca-chain.crt -servername secure.lab.local -tls1_3 </dev/null"
+CONNECTED(00000003)
+Connecting to 172.20.0.3
+depth=2 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA
+verify return:1
+depth=1 C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+verify return:1
+depth=0 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=secure.lab.local
+verify return:1
+---
+Certificate chain
+ 0 s:C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=secure.lab.local
+   i:C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+   a:PKEY: rsaEncryption, 2048 (bit); sigalg: RSA-SHA256
+   v:NotBefore: Nov  5 01:59:38 2026 GMT; NotAfter: Nov  5 01:59:38 2027 GMT
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIEKTCCAxGgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwdzELMAkGA1UEBhMCVk4x
+FDASBgNVBAgMC0hvIENoaSBNaW5oMRQwEgYDVQQKDAtVVEggUEtJIExhYjEeMBwG
+A1UECwwVSXNzdWluZyBDQSBEZXBhcnRtZW50MRwwGgYDVQQDDBNVVEggSW50ZXJt
+ZWRpYXRlIENBMB4XDTI2MTEwNTAxNTkzOFoXDTI3MTEwNTAxNTkzOFowgYAxCzAJ
+BgNVBAYTAlZOMRQwEgYDVQQIDAtIbyBDaGkgTWluaDEZMBcGA1UEBwwQSG8gQ2hp
+IE1pbmggQ2l0eTEUMBIGA1UECgwLVVRIIFBLSSBMYWIxDzANBgNVBAsMBlNlcnZl
+cjEZMBcGA1UEAwwQc2VjdXJlLmxhYi5sb2NhbDCCASIwDQYJKoZIhvcNAQEBBQAD
+ggEPADCCAQoCggEBAMTFYC4XXQYXlltZ7We5x2YcCE780Dh10ZPJbRQJkqk3Ol4k
+fsPZ9W/5G1vKEkUVCPPK/PwHge2dZy4w/p3bntSdhdz5ITWKN9N0P2KAkbWRUKbX
+vjx9Su4zTuysER2NFS7pri4lIpGbxuoFDhWNKtIkV+2ESRefiEpZwcOsY671jr5B
+5jJC8dD4V5Bgu9gjI8kuAumW/1EVdrjGqhG43lNdIL6Yczu7AUMQPj1ey+LRNn+1
+4th3ts1YrefhrP+NkCuWE+b4WP0eTWZ6f+hT0zN/gLCapFFrt4/xyfjMZctFBCIY
++wZL0PR0jhLsrRgfZWMxCsqvrn5TYiaqnKcRTK8CAwEAAaOBtDCBsTAJBgNVHRME
+AjAAMBEGCWCGSAGG+EIBAQQEAwIGQDAOBgNVHQ8BAf8EBAMCBaAwEwYDVR0lBAww
+CgYIKwYBBQUHAwEwLAYDVR0RBCUwI4IQc2VjdXJlLmxhYi5sb2NhbIIJbG9jYWxo
+b3N0hwR/AAABMB0GA1UdDgQWBBTd9CwW5NBpSufS8m0eHPOUz/nRaTAfBgNVHSME
+GDAWgBRZegS16hPlLuIgu8Jx2uqNBDM2ZTANBgkqhkiG9w0BAQsFAAOCAQEAr1qd
++j2HcDDTYJEuHrFAIIiAffShQhQbaao2ylV2FlMN0YKfq5rO3BuAMlaez/e7l5NF
+w4wxjElpWKvifyPvQXHu/jXX20qYL6Sq3XC7t2eYI+iDaqSjJN5DphVLqZIupVDv
+W/HIp/oHA+4Dq1Rrh8SNYfU0KObAh0zCi2PZv7/uJU4ryaZlVyAIs+xoufe7qenb
+GCaF3ixCh31t8bQM71VpfJzPFaEZpdRH4J/6RDVBACvmXABe/WoaxaeMWIJkkPZ+
+zPACMnAywY0UHh2KpqR3rgcmPgIZbFqINw41vTCT8s33BovgyqDnJTt8DnWOvgdW
+Eq+ZiEqohy7dlA/N0g==
+-----END CERTIFICATE-----
+subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=secure.lab.local
+issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+---
+No client certificate CA names sent
+Peer signing digest: SHA256
+Peer signature type: RSA-PSS
+Server Temp Key: X25519, 253 bits
+---
+SSL handshake has read 1629 bytes and written 334 bytes
+Verification: OK
+---
+New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
+Server public key is 2048 bit
+This TLS version forbids renegotiation.
+No ALPN negotiated
+Early data was not sent
+Verify return code: 0 (ok)
+---
+DONE
+
+[Command 3.2] (Worker 2) HTTPS GET over TLS 1.3 against secure.lab.local
+$ docker compose exec -T client curl -i -sS --tlsv1.3 --cacert /workspace/artifacts/certs/ca-chain.crt https://secure.lab.local
+HTTP/1.1 200 OK
+Server: nginx/1.27.5
+Date: Sat, 14 Nov 2026 06:36:31 GMT
+Content-Type: text/html
+Content-Length: 139
+Connection: keep-alive
+
+<html><body><h1>200 OK - Secure Web Service</h1><p>HTTPS connection established successfully with valid PKI Certificate.</p></body></html>
+
+
+================================================================================
+SECTION 4: NGINX mTLS REJECTION OF REVOKED alice.crt VIA CRL
+(curl 400 error, openssl s_client, Nginx error.log (23:certificate revoked),
+openssl verify -crl_check)
+================================================================================
+
+[Command 4.1] (Worker 2) mTLS curl request to api.lab.local/mtls using revoked alice.crt
+$ docker compose exec -T client curl -i -sS --cacert /workspace/artifacts/certs/ca-chain.crt --cert /workspace/artifacts/certs/alice.crt --key /workspace/artifacts/certs/alice.key https://api.lab.local/mtls
+HTTP/1.1 400 Bad Request
+Server: nginx/1.27.5
+Date: Sat, 14 Nov 2026 06:36:38 GMT
+Content-Type: text/html
+Content-Length: 215
+Connection: close
+
+<html>
+<head><title>400 The SSL certificate error</title></head>
+<body>
+<center><h1>400 Bad Request</h1></center>
+<center>The SSL certificate error</center>
+<hr><center>nginx/1.27.5</center>
+</body>
+</html>
+
+[Command 4.2] (Worker 2) openssl s_client mTLS probe against api.lab.local with revoked alice.crt (EOF immediately after handshake)
+$ docker compose exec -T client sh -c "openssl s_client -connect api.lab.local:443 -CAfile /workspace/artifacts/certs/ca-chain.crt -cert /workspace/artifacts/certs/alice.crt -key /workspace/artifacts/certs/alice.key -servername api.lab.local </dev/null"
+CONNECTED(00000003)
+Connecting to 172.20.0.3
+depth=2 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA
+verify return:1
+depth=1 C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+verify return:1
+depth=0 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+verify return:1
+DONE
+---
+Certificate chain
+ 0 s:C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+   i:C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+   a:PKEY: rsaEncryption, 2048 (bit); sigalg: RSA-SHA256
+   v:NotBefore: Nov 14 06:20:19 2026 GMT; NotAfter: Nov 13 06:20:19 2028 GMT
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIEIjCCAwqgAwIBAgICEAYwDQYJKoZIhvcNAQELBQAwdzELMAkGA1UEBhMCVk4x
+FDASBgNVBAgMC0hvIENoaSBNaW5oMRQwEgYDVQQKDAtVVEggUEtJIExhYjEeMBwG
+A1UECwwVSXNzdWluZyBDQSBEZXBhcnRtZW50MRwwGgYDVQQDDBNVVEggSW50ZXJt
+ZWRpYXRlIENBMB4XDTI2MTExNDA2MjAxOVoXDTI4MTExMzA2MjAxOVowfTELMAkG
+A1UEBhMCVk4xFDASBgNVBAgMC0hvIENoaSBNaW5oMRkwFwYDVQQHDBBIbyBDaGkg
+TWluaCBDaXR5MRQwEgYDVQQKDAtVVEggUEtJIExhYjEPMA0GA1UECwwGU2VydmVy
+MRYwFAYDVQQDDA1hcGkubGFiLmxvY2FsMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A
+MIIBCgKCAQEAvMf2to/1TM3ddqZr6XWO86uhH1kloVI5WY9+NWCIUVMME13YAW3z
+gqi+ZcZ/avB4zEa0ORZwB1p2MLuQSEKeZjtGJ1Xj5baFSnN5MkME5oToYreICzmj
+zN/K4gnX7v0hpnvpLjJ53CRX3CyHK7ik6HrQq4na4bJ/UUfC0uSn9G1ZIJOsvlU1
+/g9kexte70Ll2o5z1eLaxK0YDJZ/Y+5Gs5a1EFxuxP8KWyq9wo3vxgqiBofGuy8v
+phHo/SAtfcEsbrBh8YxPwGjtF/snm5SCca/FNg67DWSMOQNgpbwj71oDLhf/C95v
+IZ0pJvfJ5RLQa1rqA3g9/ddzlqBIVYvojwIDAQABo4GxMIGuMAkGA1UdEwQCMAAw
+EQYJYIZIAYb4QgEBBAQDAgZAMA4GA1UdDwEB/wQEAwIFoDATBgNVHSUEDDAKBggr
+BgEFBQcDATApBgNVHREEIjAggg1hcGkubGFiLmxvY2Fsgglsb2NhbGhvc3SHBH8A
+AAEwHQYDVR0OBBYEFHgGxci7f+VdGzZW8tAirxwP7RMiMB8GA1UdIwQYMBaAFFl6
+BLXqE+Uu4iC7wnHa6o0EMzZlMA0GCSqGSIb3DQEBCwUAA4IBAQBQcv31C8EGj5Aq
+XqdXetlNv9weTWg6SGPQHc+w9J41TkFK4kcs+vol2H3Srbt94SOFI8kURKF0quai
+aJ+HWkUjbQlBWUIoHrwbtcUIG9CXpChygilcDg/KeVn5hlimEpH+MN4nPus5avlm
+opFBMQLNGKr15qyJi/B+/c29E02LVsJrduaEjPXB274VO6Q8dA0BShlQxbSj3D2W
+waHVVwuFwVIZd1oYN/GqZjvUZn3By56ZnFcKXuPKj+h4tLB9OF/qE/PBKbNBKDm+
+y3btZb0NmphfoiDc9gYfkO3OXswkRZIrIVNWk4Cc97s8S4Jfs9JBJAFREBgf9hhC
+HBDmTh8d
+-----END CERTIFICATE-----
+subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+---
+Acceptable client certificate CA names
+C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA
+Requested Signature Algorithms: ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:ed25519:ed448:ecdsa_brainpoolP256r1_sha256:ecdsa_brainpoolP384r1_sha384:ecdsa_brainpoolP512r1_sha512:rsa_pss_pss_sha256:rsa_pss_pss_sha384:rsa_pss_pss_sha512:RSA-PSS+SHA256:RSA-PSS+SHA384:RSA-PSS+SHA512:RSA+SHA256:RSA+SHA384:RSA+SHA512:ECDSA+SHA224:RSA+SHA224
+Shared Requested Signature Algorithms: ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:ed25519:ed448:ecdsa_brainpoolP256r1_sha256:ecdsa_brainpoolP384r1_sha384:ecdsa_brainpoolP512r1_sha512:rsa_pss_pss_sha256:rsa_pss_pss_sha384:rsa_pss_pss_sha512:RSA-PSS+SHA256:RSA-PSS+SHA384:RSA-PSS+SHA512:RSA+SHA256:RSA+SHA384:RSA+SHA512
+Peer signing digest: SHA256
+Peer signature type: RSA-PSS
+Server Temp Key: X25519, 253 bits
+---
+SSL handshake has read 1965 bytes and written 4578 bytes
+Verification: OK
+---
+New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
+Server public key is 2048 bit
+This TLS version forbids renegotiation.
+No ALPN negotiated
+Early data was not sent
+Verify return code: 0 (ok)
+---
+
+[Command 4.3] (Worker 2) openssl s_client sending HTTP GET /mtls with revoked alice.crt
+(Shows Nginx rejecting at HTTP request phase after TLS handshake client-cert CRL verification)
+$ docker compose exec -T client sh -c "printf 'GET /mtls HTTP/1.1\r\nHost: api.lab.local\r\nConnection: close\r\n\r\n' | openssl s_client -connect api.lab.local:443 -CAfile /workspace/artifacts/certs/ca-chain.crt -cert /workspace/artifacts/certs/alice.crt -key /workspace/artifacts/certs/alice.key -servername api.lab.local -quiet"
+Connecting to 172.20.0.3
+depth=2 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA
+verify return:1
+depth=1 C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+verify return:1
+depth=0 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+verify return:1
+HTTP/1.1 400 Bad Request
+Server: nginx/1.27.5
+Date: Sat, 14 Nov 2026 06:36:57 GMT
+Content-Type: text/html
+Content-Length: 215
+Connection: close
+
+<html>
+<head><title>400 The SSL certificate error</title></head>
+<body>
+<center><h1>400 Bad Request</h1></center>
+<center>The SSL certificate error</center>
+<hr><center>nginx/1.27.5</center>
+</body>
+</html>
+
+[Command 4.4] (Worker 2) Nginx server access & error logs proving CRL error 23 rejection
+$ docker compose logs --tail 40 web
+pki-web  | 2026/11/14 06:35:30 [notice] 150#150: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 153#153: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 151#151: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 149#149: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 148#148: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 154#154: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 156#156: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 152#152: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 157#157: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 147#147: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 155#155: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 158#158: gracefully shutting down
+pki-web  | 2026/11/14 06:35:30 [notice] 158#158: exiting
+pki-web  | 2026/11/14 06:35:30 [notice] 158#158: exit
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 17 (SIGCHLD) received from 157
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 157 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 29 (SIGIO) received
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 17 (SIGCHLD) received from 151
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 147 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 148 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 150 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 151 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 154 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 158 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 153 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 29 (SIGIO) received
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 17 (SIGCHLD) received from 150
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 17 (SIGCHLD) received from 156
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 152 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 156 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 29 (SIGIO) received
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 17 (SIGCHLD) received from 155
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 149 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 155 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 29 (SIGIO) received
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 17 (SIGCHLD) received from 149
+pki-web  | 172.20.0.2 - - [14/Nov/2026:06:36:31 +0000] "GET / HTTP/1.1" 200 139 "-" "curl/8.14.1" "-"
+pki-web  | 172.20.0.2 - - [14/Nov/2026:06:36:38 +0000] "GET /mtls HTTP/1.1" 400 215 "-" "curl/8.14.1" "-"
+pki-web  | 2026/11/14 06:36:38 [info] 188#188: *42 client SSL certificate verify error: (23:certificate revoked) while reading client request headers, client: 172.20.0.2, server: api.lab.local, request: "GET /mtls HTTP/1.1", host: "api.lab.local"
+pki-web  | 2026/11/14 06:36:40 [info] 189#189: *43 client closed connection while waiting for request, client: 172.20.0.2, server: 0.0.0.0:443
+
+(Followed by the s_client HTTP GET /mtls log lines captured immediately afterward:)
+$ docker compose logs --tail 10 web
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 149 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: worker process 155 exited with code 0
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 29 (SIGIO) received
+pki-web  | 2026/11/14 06:35:30 [notice] 1#1: signal 17 (SIGCHLD) received from 149
+pki-web  | 172.20.0.2 - - [14/Nov/2026:06:36:31 +0000] "GET / HTTP/1.1" 200 139 "-" "curl/8.14.1" "-"
+pki-web  | 172.20.0.2 - - [14/Nov/2026:06:36:38 +0000] "GET /mtls HTTP/1.1" 400 215 "-" "curl/8.14.1" "-"
+pki-web  | 2026/11/14 06:36:38 [info] 188#188: *42 client SSL certificate verify error: (23:certificate revoked) while reading client request headers, client: 172.20.0.2, server: api.lab.local, request: "GET /mtls HTTP/1.1", host: "api.lab.local"
+pki-web  | 2026/11/14 06:36:40 [info] 189#189: *43 client closed connection while waiting for request, client: 172.20.0.2, server: 0.0.0.0:443
+pki-web  | 172.20.0.2 - - [14/Nov/2026:06:36:57 +0000] "GET /mtls HTTP/1.1" 400 215 "-" "-" "-"
+pki-web  | 2026/11/14 06:36:57 [info] 190#190: *44 client SSL certificate verify error: (23:certificate revoked) while reading client request headers, client: 172.20.0.2, server: api.lab.local, request: "GET /mtls HTTP/1.1", host: "api.lab.local"
+
+[Command 4.5] (Worker 2) OpenSSL-level CRL verification of alice.crt
+$ docker compose exec -T client openssl verify -crl_check -CAfile /workspace/artifacts/certs/ca-chain.crt -CRLfile /workspace/artifacts/certs/ca-chain.crl.pem /workspace/artifacts/certs/alice.crt
+C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Engineering, CN=Alice, emailAddress=alice@lab.local
+error 23 at 0 depth lookup: certificate revoked
+error /workspace/artifacts/certs/alice.crt: verification failed
+(exit code 1)
+
+
+================================================================================
+SECTION 5: CERTIFICATE INVENTORY PROOF (2 SERVICES + 1 USER),
+ACTUAL SAN INSPECTION & PRIVATE KEY FILE PERMISSIONS
+================================================================================
+
+[Command 5.1] (Worker 2) Confirm issued certificate files exist (2 services + 1 user)
+$ docker compose exec -T client ls -la /workspace/artifacts/certs/secure.crt /workspace/artifacts/certs/api.crt /workspace/artifacts/certs/alice.crt
+-rw-r--r-- 1 root root 1476 Nov 14 06:15 /workspace/artifacts/certs/alice.crt
+-rw-r--r-- 1 root root 1493 Nov 14 06:20 /workspace/artifacts/certs/api.crt
+-rw-r--r-- 1 root root 1505 Nov 14 06:15 /workspace/artifacts/certs/secure.crt
+
+[Command 5.2] (Worker 2) Verify trust chain & full 2-tier CRL check for valid services
+$ docker compose exec -T client openssl verify -CAfile /workspace/artifacts/certs/ca-chain.crt /workspace/artifacts/certs/secure.crt /workspace/artifacts/certs/api.crt
+/workspace/artifacts/certs/secure.crt: OK
+/workspace/artifacts/certs/api.crt: OK
+
+$ docker compose exec -T client openssl verify -crl_check_all -CAfile /workspace/artifacts/certs/ca-chain.crt -CRLfile /workspace/artifacts/certs/ca-chain.crl.pem /workspace/artifacts/certs/secure.crt /workspace/artifacts/certs/api.crt
+/workspace/artifacts/certs/secure.crt: OK
+/workspace/artifacts/certs/api.crt: OK
+
+[Command 5.3] (Worker 2) Inspect X.509v3 fields (Subject, Issuer, Serial, Validity, SAN, KeyUsage, EKU)
+
+--- Service 1: secure.crt (explicit DNS/IP SANs; NO wildcard *.lab.local) ---
+$ docker compose exec -T client openssl x509 -in /workspace/artifacts/certs/secure.crt -noout -subject -issuer -serial -dates -ext subjectAltName,keyUsage,extendedKeyUsage
+subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=secure.lab.local
+issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+serial=1000
+notBefore=Nov  5 01:59:38 2026 GMT
+notAfter=Nov  5 01:59:38 2027 GMT
+X509v3 Key Usage: critical
+    Digital Signature, Key Encipherment
+X509v3 Extended Key Usage: 
+    TLS Web Server Authentication
+X509v3 Subject Alternative Name: 
+    DNS:secure.lab.local, DNS:localhost, IP Address:127.0.0.1
+
+--- Service 2: api.crt (explicit DNS/IP SANs; NO wildcard *.lab.local) ---
+$ docker compose exec -T client openssl x509 -in /workspace/artifacts/certs/api.crt -noout -subject -issuer -serial -dates -ext subjectAltName,keyUsage,extendedKeyUsage
+subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+serial=1006
+notBefore=Nov 14 06:20:19 2026 GMT
+notAfter=Nov 13 06:20:19 2028 GMT
+X509v3 Key Usage: critical
+    Digital Signature, Key Encipherment
+X509v3 Extended Key Usage: 
+    TLS Web Server Authentication
+X509v3 Subject Alternative Name: 
+    DNS:api.lab.local, DNS:localhost, IP Address:127.0.0.1
+
+--- User 1: alice.crt (No subjectAltName extension; email in Subject DN) ---
+$ docker compose exec -T client openssl x509 -in /workspace/artifacts/certs/alice.crt -noout -subject -issuer -serial -dates -ext subjectAltName,keyUsage,extendedKeyUsage
+subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Engineering, CN=Alice, emailAddress=alice@lab.local
+issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+serial=1002
+notBefore=Nov  5 01:59:38 2026 GMT
+notAfter=Nov  5 01:59:38 2027 GMT
+X509v3 Key Usage: critical
+    Digital Signature, Key Encipherment
+X509v3 Extended Key Usage: 
+    TLS Web Client Authentication
+
+[Command 5.4] (Worker 2) Inspect Private Key File Permissions inside pki-client
+$ docker compose exec -T client sh -c "stat -c '%a %n' /workspace/pki/root/private/*.key /workspace/pki/intermediate/private/*.key /workspace/artifacts/certs/*.key"
+600 /workspace/pki/root/private/root-ca.key
+600 /workspace/pki/intermediate/private/alice.key
+600 /workspace/pki/intermediate/private/api.key
+600 /workspace/pki/intermediate/private/api_renew.key
+600 /workspace/pki/intermediate/private/bob.key
+600 /workspace/pki/intermediate/private/expired.key
+600 /workspace/pki/intermediate/private/inter-ca.key
+600 /workspace/pki/intermediate/private/revoked.key
+600 /workspace/pki/intermediate/private/secure.key
+600 /workspace/pki/intermediate/private/untrusted.key
+600 /workspace/artifacts/certs/alice.key
+600 /workspace/artifacts/certs/api.key
+600 /workspace/artifacts/certs/bob.key
+600 /workspace/artifacts/certs/expired.key
+600 /workspace/artifacts/certs/revoked.key
+600 /workspace/artifacts/certs/secure.key
+600 /workspace/artifacts/certs/untrusted.key

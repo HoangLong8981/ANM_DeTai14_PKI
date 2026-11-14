@@ -1,0 +1,35 @@
+services:
+  web:
+    image: nginx:1.27-alpine
+    container_name: pki-web
+    restart: unless-stopped
+    ports:
+      - "8443:443"
+    networks:
+      pki-net:
+        aliases:
+          - secure.lab.local
+          - api.lab.local
+          - expired.lab.local
+          - untrusted.lab.local
+          - revoked.lab.local
+    volumes:
+      - ./services/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./services/nginx/html:/usr/share/nginx/html:ro
+      - ./artifacts/certs:/etc/nginx/certs:ro
+      - ./pki:/etc/nginx/pki:ro
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
+    container_name: pki-client
+    restart: unless-stopped
+    networks:
+      - pki-net
+    volumes:
+      - .:/workspace
+
+networks:
+  pki-net:
+    driver: bridge

@@ -1,0 +1,153 @@
+=== TC06: Revoked Certificate Verification via CRL ===
+--- 1. Testing with OpenSSL s_client with CRL check ---
+Connecting to 172.20.0.3
+CONNECTED(00000003)
+depth=0 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=revoked.lab.local
+verify error:num=23:certificate revoked
+verify return:1
+depth=2 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA
+verify return:1
+depth=1 C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+verify return:1
+depth=0 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=revoked.lab.local
+verify return:1
+---
+Certificate chain
+ 0 s:C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=revoked.lab.local
+   i:C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+   a:PKEY: rsaEncryption, 2048 (bit); sigalg: RSA-SHA256
+   v:NotBefore: Nov  5 01:59:39 2026 GMT; NotAfter: Nov  5 01:59:39 2027 GMT
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIEKzCCAxOgAwIBAgICEAQwDQYJKoZIhvcNAQELBQAwdzELMAkGA1UEBhMCVk4x
+FDASBgNVBAgMC0hvIENoaSBNaW5oMRQwEgYDVQQKDAtVVEggUEtJIExhYjEeMBwG
+A1UECwwVSXNzdWluZyBDQSBEZXBhcnRtZW50MRwwGgYDVQQDDBNVVEggSW50ZXJt
+ZWRpYXRlIENBMB4XDTI2MTEwNTAxNTkzOVoXDTI3MTEwNTAxNTkzOVowgYExCzAJ
+BgNVBAYTAlZOMRQwEgYDVQQIDAtIbyBDaGkgTWluaDEZMBcGA1UEBwwQSG8gQ2hp
+IE1pbmggQ2l0eTEUMBIGA1UECgwLVVRIIFBLSSBMYWIxDzANBgNVBAsMBlNlcnZl
+cjEaMBgGA1UEAwwRcmV2b2tlZC5sYWIubG9jYWwwggEiMA0GCSqGSIb3DQEBAQUA
+A4IBDwAwggEKAoIBAQCm4XxNSDz7b2jmoE5G4M9q9/qvF2/3urEmp0PlwMWxWwS2
+VLhFfDACx5ptJ5FOOdCpDuRoUcfk2+CcqDvVBTQ4gHtlcbcDDKZIUB3BDhuvoYlT
+Yoh/mbtDJTSEocqUzZOKMe6aI0ZbWjBJqOmakSqttFMocRUYwN1HqyH8G8yiPEzD
+waAVtUQItNY/QtZpf/Sb6H15TNHoeBxHkN7l2/s7+rW+EaZeR5n0BPRD4G8+bXnd
+42i1t0A2iJH1I92KQOXCz1u8EoAgq4pk1o8CxcjFT3frN8Fh4wORfEgnVgWvma67
+5IH76XNd4SlMRLoH3SX/8qS3I0XWkktYYOAjDWIBAgMBAAGjgbUwgbIwCQYDVR0T
+BAIwADARBglghkgBhvhCAQEEBAMCBkAwDgYDVR0PAQH/BAQDAgWgMBMGA1UdJQQM
+MAoGCCsGAQUFBwMBMC0GA1UdEQQmMCSCEXJldm9rZWQubGFiLmxvY2Fsgglsb2Nh
+bGhvc3SHBH8AAAEwHQYDVR0OBBYEFOUHzQVqBwJ+nGpFMCKUaXJjH4dmMB8GA1Ud
+IwQYMBaAFFl6BLXqE+Uu4iC7wnHa6o0EMzZlMA0GCSqGSIb3DQEBCwUAA4IBAQBw
++/kwM3l+EDtoau2ruA0AfbQ0QDQ+a89raycwexS8hn5kiYTWSPhU/Mh2v/VD9b2c
+etiJI28PPS6ue7cyiQHN7e/QOlzaqs4n3buqte5VC3xH69QKMJYujyY0fsW3mTk1
+ZHwPCUlW0LziK/g7lI58Rhj6QCBhngaDvevfkiA7xVEj6dBIIWfwKueOm0ITRpuA
+U9pvhVubviReerL7ri2kFjDaeIOsdGmbTUK37Rn0VwW341itQ6L/qG7xKTyGqiVI
+K+XPcakCI4HIT8f+lkOqiBoG0sLrNiyPzB+Bm5okUPYIScR26lNosVrRGrBsmApl
+q0zLjry/izMxiUk7lWl/
+-----END CERTIFICATE-----
+subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=revoked.lab.local
+issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+---
+No client certificate CA names sent
+Peer signing digest: SHA256
+Peer signature type: RSA-PSS
+Server Temp Key: X25519, 253 bits
+---
+SSL handshake has read 1631 bytes and written 405 bytes
+Verification error: certificate revoked
+---
+New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
+Server public key is 2048 bit
+This TLS version forbids renegotiation.
+No ALPN negotiated
+Early data was not sent
+Verify return code: 23 (certificate revoked)
+---
+---
+Post-Handshake New Session Ticket arrived:
+SSL-Session:
+    Protocol  : TLSv1.3
+    Cipher    : TLS_AES_256_GCM_SHA384
+    Session-ID: 27A23F60E8114991522D4072CED293651D3FC42BA5D9DA0D60928B5F0A31D8B5
+    Session-ID-ctx: 
+    Resumption PSK: DC7278DCDD1030D878958ABEFB6B89FCB25CEBFF097420BFEE07EACDC50D9DF42540905516700BB9752EC963C147C7EF
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    TLS session ticket lifetime hint: 300 (seconds)
+    TLS session ticket:
+    0000 - 83 6f a0 1a d1 05 db 12-59 cd 43 41 1d 98 1a c7   .o......Y.CA....
+    0010 - a3 d8 6f 8c 40 77 0e a9-97 b1 b6 1b ac 26 dd cf   ..o.@w.......&..
+    0020 - 18 f0 ce ac c9 38 48 c4-3e 32 81 bf 45 65 26 92   .....8H.>2..Ee&.
+    0030 - 1b d7 c3 78 2d 32 78 6d-1a bc 3c 4a f1 47 84 d8   ...x-2xm..<J.G..
+    0040 - 2b cb fa 6b 51 91 e7 20-37 01 19 8d 98 7b 3f be   +..kQ.. 7....{?.
+    0050 - 85 dd 97 57 e1 34 44 d8-41 3c 37 c9 b5 15 5d f2   ...W.4D.A<7...].
+    0060 - af 55 de 4e 23 b2 30 b1-eb b3 c9 96 5b c2 57 3a   .U.N#.0.....[.W:
+    0070 - c0 8f 73 c9 95 6a 82 7d-b6 3b 6a 7f 4b 58 40 8c   ..s..j.}.;j.KX@.
+    0080 - 8e 38 27 84 0b 2f eb b3-98 e0 bd 95 de 6a 9d c0   .8'../.......j..
+    0090 - 44 12 84 ba 1f 1d d4 1f-cc 0d 62 b5 d6 2f 9b 3f   D.........b../.?
+    00a0 - f0 80 8f c3 75 e7 04 67-d1 f0 4a cc 5d f7 34 55   ....u..g..J.].4U
+    00b0 - 19 e0 6a de e7 c5 e3 80-62 43 b4 32 f9 12 57 9f   ..j.....bC.2..W.
+    00c0 - c1 bf cc c0 12 8e 9d f5-ab a7 7a 64 33 83 47 d5   ..........zd3.G.
+    00d0 - 02 3d a8 44 4e ea 1d 0b-23 46 3f 24 0c 0a a0 81   .=.DN...#F?$....
+    00e0 - 22 9a a1 4c de 3e e7 82-27 55 b0 26 c9 e5 c8 c9   "..L.>..'U.&....
+
+    Start Time: 1794637329
+    Timeout   : 7200 (sec)
+    Verify return code: 23 (certificate revoked)
+    Extended master secret: no
+    Max Early Data: 0
+---
+read R BLOCK
+---
+Post-Handshake New Session Ticket arrived:
+SSL-Session:
+    Protocol  : TLSv1.3
+    Cipher    : TLS_AES_256_GCM_SHA384
+    Session-ID: 3559EBF3D9B7BEF0EC273A54EBAF14B7040925775B4A1BA2E6E441A4F82992B9
+    Session-ID-ctx: 
+    Resumption PSK: B77301ADD439CD4141BF7F6FAF94AC93E29BF5942D5B1F1D2901145BC6664CB1EE11B7E34C464F557059F09AA5495B9B
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    TLS session ticket lifetime hint: 300 (seconds)
+    TLS session ticket:
+    0000 - 83 6f a0 1a d1 05 db 12-59 cd 43 41 1d 98 1a c7   .o......Y.CA....
+    0010 - a9 9e 2e a9 27 57 66 92-0a 72 e2 0c 76 c7 d9 97   ....'Wf..r..v...
+    0020 - a5 43 9d 0b 0b f9 83 92-51 1b 10 3b 90 90 a9 34   .C......Q..;...4
+    0030 - cf d9 fd cd 86 eb 40 c6-10 48 7e f9 db 50 ff 7d   ......@..H~..P.}
+    0040 - 26 99 fd 0e ee 16 00 67-79 0c fa 0a 4b a6 9a 5d   &......gy...K..]
+    0050 - ce 6c 51 e5 32 ff d7 95-eb 4f ff 18 95 ac 5c 9f   .lQ.2....O....\.
+    0060 - 1e 01 6b 41 c5 30 83 8b-49 b7 18 0a e4 05 d7 2c   ..kA.0..I......,
+    0070 - 78 52 58 2d 2d af 8e f8-ca 26 47 19 e8 49 de af   xRX--....&G..I..
+    0080 - ef 49 ae 2a 07 2f 28 2e-c2 4c e6 51 d1 a6 85 bb   .I.*./(..L.Q....
+    0090 - 1b 39 4c 21 e2 3f ab d8-91 ab be a5 1a 44 03 e8   .9L!.?.......D..
+DONE
+    00a0 - 62 51 c4 a8 c1 52 dd d1-ae 38 da 7f 21 d9 9c 99   bQ...R...8..!...
+    00b0 - 60 de 6a 94 e1 13 5a b3-14 b9 6a 39 1e b9 8c 5e   `.j...Z...j9...^
+    00c0 - 4e 6c 07 36 17 ef 95 5f-97 36 71 a6 ac cb 46 4a   Nl.6..._.6q...FJ
+    00d0 - 02 c9 de f8 a2 79 98 75-62 22 62 d7 3e c2 d1 b0   .....y.ub"b.>...
+    00e0 - 51 bd 94 23 8b 18 57 93-7b 56 ed 7d 1d a0 b5 5a   Q..#..W.{V.}...Z
+
+    Start Time: 1794637329
+    Timeout   : 7200 (sec)
+    Verify return code: 23 (certificate revoked)
+    Extended master secret: no
+    Max Early Data: 0
+---
+read R BLOCK
+
+--- 2. Testing with openssl verify with CRL check ---
+C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=revoked.lab.local
+error 23 at 0 depth lookup: certificate revoked
+error /workspace/artifacts/certs/revoked.crt: verification failed
+
+--- 3. Testing with cURL with CRL check ---
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+curl: (60) SSL certificate problem: certificate revoked
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the webpage mentioned above.

@@ -1,0 +1,3 @@
+=== TC01: Chain of Trust Verification ===
+Command: openssl verify -CAfile /workspace/artifacts/certs/ca-chain.crt /workspace/artifacts/certs/secure.crt
+/workspace/artifacts/certs/secure.crt: OK

@@ -1,0 +1,1 @@
+V	311104015938Z		1000	unknown	/C=VN/ST=Ho Chi Minh/O=UTH PKI Lab/OU=Issuing CA Department/CN=UTH Intermediate CA

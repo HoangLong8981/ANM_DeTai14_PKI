@@ -1,0 +1,33 @@
+=== TC03: Mutual TLS (mTLS) Authentication ===
+--- Test 1: Accessing /mtls WITHOUT client certificate (Expected: 400 Bad Request) ---
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 400 Bad Request
+100   237  100   237    0     0   1768      0 --:--:-- --:--:-- --:--:--  1781
+Server: nginx/1.27.5
+Date: Sat, 14 Nov 2026 06:22:08 GMT
+Content-Type: text/html
+Content-Length: 237
+Connection: close
+
+<html>
+<head><title>400 No required SSL certificate was sent</title></head>
+<body>
+<center><h1>400 Bad Request</h1></center>
+<center>No required SSL certificate was sent</center>
+<hr><center>nginx/1.27.5</center>
+</body>
+</html>
+
+--- Test 2: Accessing /mtls WITH Alice client certificate (Expected: 200 OK) ---
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 200 OK
+100   228  100   228    0     0   1566      0 --:--:-- --:--:-- --:--:--  1572
+Server: nginx/1.27.5
+Date: Sat, 14 Nov 2026 06:22:08 GMT
+Content-Type: application/json
+Content-Length: 228
+Connection: keep-alive
+
+{"status": 200, "message": "200 OK - mTLS Authenticated", "auth": "mTLS Authenticated", "client_dn": "emailAddress=alice@lab.local,CN=Alice,OU=Engineering,O=UTH PKI Lab,L=Ho Chi Minh City,ST=Ho Chi Minh,C=VN", "serial": "1002"}

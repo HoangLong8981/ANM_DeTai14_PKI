@@ -1,0 +1,53 @@
+=== TC08: Certificate Renewal Lifecycle (api.lab.local) ===
+--- 1. Current Certificate State BEFORE Renewal ---
+subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+serial=1006
+notBefore=Nov 14 06:20:19 2026 GMT
+notAfter=Nov 13 06:20:19 2028 GMT
+
+[!] Renewal already demonstrated (api_old.crt exists); displaying current renewal verification.
+--- 5. New Certificate State AFTER Renewal ---
+subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+serial=1006
+notBefore=Nov 14 06:20:19 2026 GMT
+notAfter=Nov 13 06:20:19 2028 GMT
+
+--- 6. Verification Comparison (Old Superseded vs Renewed Valid) ---
+[Old Certificate (/workspace/pki/intermediate/certs/api_old.crt)]:
+C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+error 23 at 0 depth lookup: certificate revoked
+error /workspace/pki/intermediate/certs/api_old.crt: verification failed
+
+[Renewed Certificate (/workspace/artifacts/certs/api.crt)]:
+/workspace/artifacts/certs/api.crt: OK
+
+--- 7. Intermediate CA Database (index.txt) Snapshot ---
+V	271105015938Z		1000	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=secure.lab.local
+R	271105015938Z	261114062019Z,superseded	1001	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=api.lab.local
+V	271105015938Z		1002	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Alice/emailAddress=alice@lab.local
+V	200102000000Z		1003	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=expired.lab.local
+R	271105015939Z	261105015939Z,keyCompromise	1004	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=revoked.lab.local
+R	271114061502Z	261114061536Z,keyCompromise	1005	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Bob/emailAddress=bob@lab.local
+V	281113062019Z		1006	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=api.lab.local
+
+--- 8. Live mTLS Verification Against Renewed api.lab.local Server Cert ---
+depth=2 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA
+depth=1 C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
+depth=0 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=api.lab.local
+Verification: OK
+New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
+Verify return code: 0 (ok)
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 200 OK
+100   228  100   228    0     0   1592      0 --:--:-- --:--:-- --:--:--  1605
+Server: nginx/1.27.5
+Date: Sat, 14 Nov 2026 06:22:10 GMT
+Content-Type: application/json
+Content-Length: 228
+Connection: keep-alive
+
+{"status": 200, "message": "200 OK - mTLS Authenticated", "auth": "mTLS Authenticated", "client_dn": "emailAddress=alice@lab.local,CN=Alice,OU=Engineering,O=UTH PKI Lab,L=Ho Chi Minh City,ST=Ho Chi Minh,C=VN", "serial": "1002"}

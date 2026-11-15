@@ -19,6 +19,9 @@ bash "${WORKSPACE}/pki/scripts/02_issue_certs.sh"
 echo "[*] Step 3: Revoking revoked.crt and updating CRL..."
 bash "${WORKSPACE}/pki/scripts/03_revoke_crl.sh"
 
+echo "[*] Step 4: Reissuing alice.crt if the previous one was revoked (no-op when still valid)..."
+bash "${WORKSPACE}/pki/scripts/05_reissue_user.sh" alice Alice alice@lab.local
+
 echo "[*] Ensuring correct file permissions..."
 chmod 700 "${WORKSPACE}/pki/root/private" "${WORKSPACE}/pki/intermediate/private"
 chmod 600 "${WORKSPACE}"/pki/root/private/*.key "${WORKSPACE}"/pki/intermediate/private/*.key "${WORKSPACE}"/artifacts/certs/*.key 2>/dev/null || true

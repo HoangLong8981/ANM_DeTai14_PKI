@@ -17,7 +17,6 @@ services:
       - ./services/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./services/nginx/html:/usr/share/nginx/html:ro
       - ./artifacts/certs:/etc/nginx/certs:ro
-      - ./pki:/etc/nginx/pki:ro
 
   client:
     build:

@@ -103,11 +103,38 @@ show_tc07() {
     echo " [TC07] NGINX CHẶN CLIENT CERT BỊ THU HỒI BẰNG CRL (API.LAB.LOCAL) "
     echo " Ý nghĩa: Nginx dùng ssl_crl + ssl_verify_client chặn Bob (400) & cho phép Alice (200)"
     echo "=========================================================================="
-    echo "[1] Bob (Serial 1005 - Đã thu hồi trong ca-chain.crl.pem):"
+    local alice_serial bob_serial
+    alice_serial=$(openssl x509 -in "${CERTS_DIR}/alice.crt" -noout -serial | cut -d= -f2)
+    bob_serial=$(openssl x509 -in "${CERTS_DIR}/bob.crt" -noout -serial | cut -d= -f2)
+    echo "[1] Bob (Serial ${bob_serial} - Đã thu hồi trong ca-chain.crl.pem):"
     curl -i --cacert "${CERTS_DIR}/ca-chain.crt" --cert "${CERTS_DIR}/bob.crt" --key "${CERTS_DIR}/bob.key" https://api.lab.local/mtls || true
     echo ""
-    echo "[2] Alice (Serial 1002 - Hợp lệ):"
+    echo "[2] Alice (Serial ${alice_serial} - Hợp lệ):"
     curl -i --cacert "${CERTS_DIR}/ca-chain.crt" --cert "${CERTS_DIR}/alice.crt" --key "${CERTS_DIR}/alice.key" https://api.lab.local/mtls
+    echo ""
+}
+
+show_tc07_alice_revoked() {
+    echo "=========================================================================="
+    echo " [TC07b] NGINX CHẶN CHỨNG THƯ ALICE CŨ ĐÃ THU HỒI (alice_<serial>_revoked.crt) "
+    echo " Điều kiện: đã chạy 05_reissue_user.sh và đã thu hồi chứng thư cũ trước đó"
+    echo "=========================================================================="
+    local crt key serial
+    crt=$(ls "${CERTS_DIR}"/alice_*_revoked.crt 2>/dev/null | head -n1 || true)
+    if [ -z "${crt}" ]; then
+        echo "[-] Chưa có alice_<serial>_revoked.crt (chưa từng thu hồi/cấp lại Alice)."
+        return 0
+    fi
+    key="${crt%.crt}.key"
+    serial=$(openssl x509 -in "${crt}" -noout -serial | cut -d= -f2)
+    echo "[1] Trạng thái Serial ${serial} trong index.txt:"
+    grep -w "${serial}" "${WORKSPACE}/pki/intermediate/index.txt" || true
+    echo ""
+    echo "[2] mTLS với chứng thư đã thu hồi (kỳ vọng HTTP 400, error 23 trong log Nginx):"
+    curl -i -sS --cacert "${CERTS_DIR}/ca-chain.crt" --cert "${crt}" --key "${key}" https://api.lab.local/mtls || true
+    echo ""
+    echo "[3] openssl verify -crl_check:"
+    openssl verify -crl_check -CAfile "${CERTS_DIR}/ca-chain.crt" -CRLfile "${CERTS_DIR}/ca-chain.crl.pem" "${crt}" || true
     echo ""
 }
 
@@ -128,6 +155,7 @@ case "$CASE" in
     5|tc05|TC05) show_tc05 ;;
     6|tc06|TC06) show_tc06 ;;
     7|tc07|TC07) show_tc07 ;;
+    7b|tc07b|TC07B) show_tc07_alice_revoked ;;
     8|tc08|TC08) show_tc08 ;;
     cert|x509)  show_cert_details ;;
     all)
@@ -139,10 +167,11 @@ case "$CASE" in
         show_tc05
         show_tc06
         show_tc07
+        show_tc07_alice_revoked
         show_tc08
         ;;
     *)
-        echo "Cách dùng: $0 [tc01|tc02|tc03|tc04|tc05|tc06|tc07|tc08|cert|all]"
+        echo "Cách dùng: $0 [tc01|tc02|tc03|tc04|tc05|tc06|tc07|tc07b|tc08|cert|all]"
         exit 1
         ;;
 esac

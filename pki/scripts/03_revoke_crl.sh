@@ -53,3 +53,5 @@ cat "${INTER_DIR}/crl/inter.crl.pem" "${ROOT_DIR}/crl/root.crl.pem" > "${ARTIFAC
 chmod 644 "${ARTIFACTS_CERTS}/inter.crl.pem" "${ARTIFACTS_CERTS}/root.crl.pem" "${ARTIFACTS_CERTS}/ca-chain.crl.pem"
 
 echo "[✓] Step 3 completed: CRL and ca-chain.crl.pem updated."
+echo "[i] Nginx only reads ca-chain.crl.pem at (re)load time. Run on the HOST (not inside this container):"
+echo "      docker compose exec web nginx -s reload"

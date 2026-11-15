@@ -167,4 +167,12 @@ fi
 # 7. Service: revoked.lab.local (Initially valid, will be revoked in Step 3)
 issue_server_cert "revoked" "revoked.lab.local" "-days 365"
 
+# 8. Build full-chain files (leaf + Intermediate CA) so Nginx sends the complete chain.
+#    Browsers/clients that only trust the Root CA need the Intermediate CA from the server.
+echo "[+] Building fullchain files (leaf + Intermediate CA) for secure and api..."
+for n in secure api; do
+    cat "${ARTIFACTS_CERTS}/${n}.crt" "${ARTIFACTS_CERTS}/inter-ca.crt" > "${ARTIFACTS_CERTS}/${n}.fullchain.crt"
+    chmod 644 "${ARTIFACTS_CERTS}/${n}.fullchain.crt"
+done
+
 echo "[✓] Step 2 completed successfully: All certificates issued."

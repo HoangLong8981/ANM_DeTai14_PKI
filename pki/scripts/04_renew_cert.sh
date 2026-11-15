@@ -70,6 +70,8 @@ EOF
         cp "${INTER_DIR}/certs/api.crt" "${ARTIFACTS_CERTS}/api.crt"
         cp "${INTER_DIR}/private/api.key" "${ARTIFACTS_CERTS}/api.key"
         chmod 600 "${ARTIFACTS_CERTS}/api.key"
+        cat "${ARTIFACTS_CERTS}/api.crt" "${ARTIFACTS_CERTS}/inter-ca.crt" > "${ARTIFACTS_CERTS}/api.fullchain.crt"
+        chmod 644 "${ARTIFACTS_CERTS}/api.fullchain.crt"
         cp "${INTER_DIR}/crl/inter.crl.pem" "${ARTIFACTS_CERTS}/inter.crl.pem"
         cat "${INTER_DIR}/crl/inter.crl.pem" "${ROOT_DIR}/crl/root.crl.pem" > "${ARTIFACTS_CERTS}/ca-chain.crl.pem"
     else

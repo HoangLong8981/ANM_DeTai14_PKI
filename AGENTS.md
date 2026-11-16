@@ -41,19 +41,21 @@ flowchart TD
         EdgeCases["Endpoints Test Lỗi: expired / untrusted / revoked.lab.local"]
     end
 
-    subgraph Clients ["Container Kiểm Thử (client-tester)"]
+    subgraph Clients ["Container Kiểm Thử (pki-client)"]
         UserClient["User 1: Alice (Có Client Cert hợp lệ)"]
         GuestClient["Guest / Tester (Chạy script kiểm thử)"]
     end
 
-    InterCA -->|Phát hành Server Cert| WebService
-    InterCA -->|Phát hành Server Cert| ApiService
+    InterCA -->|Phát hành Server Cert (*.fullchain.crt)| WebService
+    InterCA -->|Phát hành Server Cert (*.fullchain.crt)| ApiService
     InterCA -->|Phát hành Client Cert| UserClient
 
     UserClient -->|HTTPS + mTLS Thành công| ApiService
-    GuestClient -->|Kiểm thử 6 kịch bản TC01-TC06| Services
-    Services -.->|Nạp ssl_crl| CRLFile
-    ---
+    GuestClient -->|Kiểm thử TC01-TC09| Services
+    ApiService -.->|Nạp ssl_crl| CRLFile
+```
+
+---
 
 ## 3. Quy Ước Cấu Trúc Thư Mục Chuẩn
 
@@ -65,10 +67,10 @@ Mọi thành phần của đồ án phải tuân thủ đúng cấu trúc sau:
 - `docker-compose.yml`: Khởi chạy môi trường mạng cô lập (`web`, `client`).
 - `pki/config/`: Chứa `root-ca.cnf`, `intermediate-ca.cnf`, `server-ext.cnf`, `client-ext.cnf`.
 - `pki/root/` & `pki/intermediate/`: Không gian lưu trữ `private/`, `certs/`, `crl/`, `index.txt`, `serial`.
-- `pki/scripts/`: Chứa `01_setup_ca.sh`, `02_issue_certs.sh`, `03_revoke_crl.sh`.
+- `pki/scripts/`: Chứa `01_setup_ca.sh`, `02_issue_certs.sh`, `03_revoke_crl.sh`, `04_renew_cert.sh`, `05_reissue_user.sh`, `init_all_pki.sh`.
 - `services/nginx/conf.d/` & `html/`: Cấu hình virtual hosts cho `secure`, `api`, `expired`, `untrusted`, `revoked`.
-- `tests/run_all_tests.sh`: Script tự động chạy toàn bộ 6 kịch bản TC01 -> TC06.
-- `artifacts/certs/` & `artifacts/logs/`: Lưu các chứng thư công khai và 6 file `.log` kết quả kiểm thử.
+- `tests/`: Chứa `run_all_tests.sh` (TC01–TC06), `run_extended_tests.sh` (TC07–TC09), `demo_report.sh`, `eval_rubric.sh`.
+- `artifacts/certs/` & `artifacts/logs/`: Lưu các chứng thư/khóa thực nghiệm (`*.fullchain.crt`, `ca-chain.crt`, `ca-chain.crl.pem`) và file `.log` kết quả kiểm thử (TC01–TC09).
 
 ---
 

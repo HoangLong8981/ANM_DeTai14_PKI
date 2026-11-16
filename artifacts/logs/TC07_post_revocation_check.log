@@ -1,0 +1,31 @@
+--- Post-Revocation Live Check ---
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 400 Bad Request
+100   215  100   215    0     0   1594      0 --:--:-- --:--:-- --:--:--  1604
+Server: nginx/1.27.5
+Date: Mon, 16 Nov 2026 15:08:37 GMT
+Content-Type: text/html
+Content-Length: 215
+Connection: close
+
+<html>
+<head><title>400 The SSL certificate error</title></head>
+<body>
+<center><h1>400 Bad Request</h1></center>
+<center>The SSL certificate error</center>
+<hr><center>nginx/1.27.5</center>
+</body>
+</html>
+
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 200 OK
+100   228  100   228    0     0   1782      0 --:--:-- --:--:-- --:--:--  1795
+Server: nginx/1.27.5
+Date: Mon, 16 Nov 2026 15:08:37 GMT
+Content-Type: application/json
+Content-Length: 228
+Connection: keep-alive
+
+{"status": 200, "message": "200 OK - mTLS Authenticated", "auth": "mTLS Authenticated", "client_dn": "emailAddress=alice@lab.local,CN=Alice,OU=Engineering,O=UTH PKI Lab,L=Ho Chi Minh City,ST=Ho Chi Minh,C=VN", "serial": "1007"}

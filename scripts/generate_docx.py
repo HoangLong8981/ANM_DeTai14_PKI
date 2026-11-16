@@ -27,8 +27,8 @@ FIGURES = [
     (
         2,
         "image11.png",
-        "Kiểm kê cơ sở dữ liệu CA (index.txt cho 2 dịch vụ + 1 người dùng) và quyền khóa riêng chmod 600",
-        "Xác nhận index.txt ghi nhận đầy đủ chứng thư đã cấp cho secure.lab.local (Serial 1000), api.lab.local (Serial 1006 sau gia hạn) và Alice (Serial 1002), kèm kiểm tra stat trả về mode 600 trên toàn bộ 17 tệp .key.",
+        "Kiểm kê cơ sở dữ liệu CA (index.txt cho 2 dịch vụ + người dùng) và quyền khóa riêng chmod 600",
+        "Xác nhận index.txt gồm 8 dòng đầy đủ cho secure.lab.local (Serial 1000), api.lab.local (Serial 1006 gia hạn từ 1001), Alice (Serial 1002 đã thu hồi và cấp lại thành Serial 1007), kèm kiểm tra stat trả về mode 600 trên toàn bộ 19 tệp .key.",
     ),
     (
         3,
@@ -46,13 +46,13 @@ FIGURES = [
         5,
         "image12.png",
         "Kết quả bắt tay TLS 1.3 và Verify return code: 0 (ok) qua openssl s_client -tls1_3 (TC02 bổ sung)",
-        "Chứng minh kết nối tới secure.lab.local thiết lập giao thức TLSv1.3 với cipher TLS_AES_256_GCM_SHA384, khóa tạm thời X25519 (253 bits), chữ ký RSA-PSS trên SHA256 và Verify return code: 0 (ok).",
+        "Chứng minh kết nối tới secure.lab.local hiển thị đủ depth=2..0 và chuỗi Certificate chain 2 tầng (0: secure.lab.local, 1: UTH Intermediate CA), thiết lập giao thức TLSv1.3 với cipher TLS_AES_256_GCM_SHA384, khóa tạm thời X25519 (253 bits), chữ ký RSA-PSS trên SHA256, 2888 bytes handshake và Verify return code: 0 (ok).",
     ),
     (
         6,
         "image9.png",
         "Giao diện trình duyệt trên Windows tại https://localhost:8443 (cảnh báo chưa import Root CA)",
-        "Dịch vụ web vẫn phản hồi 200 OK - Secure Web Service nhưng trình duyệt Windows hiển thị 'Không bảo mật' do Trust Store của Windows chưa import root-ca.crt và URL dùng localhost:8443 thay vì tên miền đầy đủ.",
+        "Dịch vụ web phản hồi 200 OK - Secure Web Service và chứng thư secure.crt đã khai báo DNS:localhost trong SAN, nhưng trình duyệt Windows hiển thị 'Không bảo mật' do Trust Store của hệ điều hành chưa import root-ca.crt.",
     ),
     (
         7,
@@ -63,14 +63,14 @@ FIGURES = [
     (
         8,
         "image10.png",
-        "Kết quả xác thực hai chiều mTLS tại api.lab.local/mtls (TC03 — trước khi thu hồi alice.crt)",
-        "Chứng minh Nginx từ chối kết nối thiếu chứng chỉ khách bằng HTTP/1.1 400 Bad Request và cho phép HTTP/1.1 200 OK kèm Client DN khi cung cấp alice.crt hợp lệ (Serial 1002).",
+        "Kết quả xác thực hai chiều mTLS tại api.lab.local/mtls (TC03 — chứng thư alice.crt hợp lệ Serial 1007)",
+        "Chứng minh Nginx từ chối kết nối thiếu chứng chỉ khách bằng HTTP/1.1 400 Bad Request và cho phép HTTP/1.1 200 OK kèm Client DN khi cung cấp alice.crt hợp lệ đã cấp lại (Serial 1007).",
     ),
     (
         9,
         "image13.png",
-        "Kết quả Nginx từ chối chứng chỉ alice.crt đã thu hồi qua ssl_crl (HTTP 400 + error 23)",
-        "Chứng minh sau khi thu hồi alice.crt (Serial 1002, keyCompromise), yêu cầu mTLS tới api.lab.local/mtls bị Nginx trả về HTTP/1.1 400 Bad Request, log pki-web ghi nhận error (23:certificate revoked) và openssl verify -crl_check báo error 23.",
+        "Kết quả Nginx từ chối chứng chỉ alice_1002_revoked.crt đã thu hồi qua ssl_crl (demo_report.sh tc07b)",
+        "Chứng minh chứng thư cũ của Alice (alice_1002_revoked.crt, Serial 1002, keyCompromise) bị Nginx từ chối khi xác thực mTLS tại api.lab.local/mtls với HTTP/1.1 400 Bad Request (400 The SSL certificate error) và openssl verify -crl_check báo error 23.",
     ),
     (
         10,
@@ -386,7 +386,38 @@ def make_helpers(doc):
         p_cap.paragraph_format.space_after = Pt(2 if desc else 10)
         if desc:
             p_cap.paragraph_format.keep_with_next = True
-        r_cap = p_cap.add_run(f"Fig. {fig_num}: {title}")
+        r_cap = p_cap.add_run(f"Fig. {fig_num}. {title}")
+        r_cap.font.size = Pt(10)
+        r_cap.bold = True
+        r_cap.font.color.rgb = COLOR_PRIMARY
+
+        if desc:
+            p_desc = doc.add_paragraph()
+            p_desc.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p_desc.paragraph_format.space_after = Pt(10)
+            r_desc = p_desc.add_run(desc)
+            r_desc.font.size = Pt(9.5)
+            r_desc.italic = True
+            r_desc.font.color.rgb = COLOR_SUBTEXT
+
+    def add_diagram(diag_num, img_name, title, desc=None):
+        img_path = IMG_DIR / img_name
+        if not img_path.exists():
+            raise FileNotFoundError(f"Missing diagram image: {img_path}")
+        p_img = doc.add_paragraph()
+        p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_img.paragraph_format.space_before = Pt(6)
+        p_img.paragraph_format.space_after = Pt(3)
+        p_img.paragraph_format.keep_with_next = True
+        run_img = p_img.add_run()
+        run_img.add_picture(str(img_path), width=Inches(6.2))
+
+        p_cap = doc.add_paragraph()
+        p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_cap.paragraph_format.space_after = Pt(2 if desc else 10)
+        if desc:
+            p_cap.paragraph_format.keep_with_next = True
+        r_cap = p_cap.add_run(f"Sơ đồ {diag_num}. {title}")
         r_cap.font.size = Pt(10)
         r_cap.bold = True
         r_cap.font.color.rgb = COLOR_PRIMARY
@@ -410,6 +441,7 @@ def make_helpers(doc):
         "code": add_code,
         "table": add_styled_table,
         "fig": add_fig,
+        "diagram": add_diagram,
     }
 
 
@@ -419,7 +451,7 @@ def add_cover_header(doc, subtitle_text, doc_type_banner):
     p_uni.paragraph_format.space_after = Pt(4)
     r_uni = p_uni.add_run(
         "TRƯỜNG ĐẠI HỌC GIAO THÔNG VẬN TẢI TP. HỒ CHÍ MINH (UTH)\n"
-        "KHOA CÔNG NGHỆ THÔNG TIN — BỘ MÔN AN NINH MẠNG"
+        "KHOA CÔNG NGHỆ SỐ"
     )
     r_uni.font.size = Pt(12)
     r_uni.bold = True
@@ -460,9 +492,14 @@ def add_cover_header(doc, subtitle_text, doc_type_banner):
 
     # Cover Metadata Box / Table
     meta_rows = [
-        ("Nhóm thực hiện:", "[Tên / Mã nhóm thực hiện — Đề tài 14]"),
-        ("Thành viên / MSSV:", "[Họ và tên 1 - MSSV], [Họ và tên 2 - MSSV], [Họ và tên 3 - MSSV]"),
-        ("Lớp:", "[Mã lớp học phần]"),
+        ("Nhóm thực hiện:", "Nhóm 14 — Đề tài 14"),
+        ("Mã lớp học phần:", "012012303804"),
+        (
+            "Thành viên thực hiện:",
+            "Lô Nguyễn Hoàng Long – 019206004121\n"
+            "Nguyễn Minh Hoàng – 082206001298\n"
+            "Phạm Văn Đạt – 051206011533",
+        ),
         ("Giảng viên hướng dẫn:", "TS. Lê Quốc Tuấn"),
         ("Môi trường thực nghiệm:", "Docker Compose (các container Linux Alpine) chạy trên nền hệ điều hành Windows"),
         ("Thời gian hoàn thành:", "TP. Hồ Chí Minh, tháng 11/2026"),
@@ -650,7 +687,7 @@ def create_report():
     h["p"](
         "2) Ràng buộc phần mở rộng X.509v3 và SAN: Các trình duyệt hiện đại và ứng dụng HTTPS/TLS đã loại bỏ việc đối chiếu tên "
         "miền chỉ qua trường Common Name (CN), bắt buộc chứng thư máy chủ phải khai báo phần mở rộng Subject Alternative Name "
-        "(SAN) cùng các ràng buộc sử dụng khóa phù hợp [1, Mục 4.5], [3, tr. 53, 99].",
+        "(SAN) cùng các ràng buộc sử dụng khóa phù hợp [1, Mục 4.5], [3, tr. 56, 99].",
         space_after=4,
     )
     h["p"](
@@ -679,7 +716,7 @@ def create_report():
     h["bullet"](
         "Phát hành chứng thư X.509v3 cho 2 dịch vụ và 1 người dùng: ",
         "Cấp phát chứng thư có SAN tường minh cho secure.lab.local (Serial 1000) và api.lab.local (Serial 1001, sau gia hạn "
-        "thành Serial 1006), cùng chứng thư người dùng cho Alice (Serial 1002, EKU clientAuth).",
+        "thành Serial 1006), cùng chứng thư người dùng cho Alice (khởi tạo Serial 1002, sau khi thu hồi và cấp lại qua 05_reissue_user.sh thành Serial 1007, EKU clientAuth).",
     )
     h["bullet"](
         "Triển khai HTTPS (TLS 1.3) và xác thực hai chiều mTLS trên Nginx: ",
@@ -697,12 +734,47 @@ def create_report():
         "tự động do nhóm xây dựng (eval_rubric.sh) đạt 10.0 / 10.0 điểm trên 6 kịch bản TC01–TC06 và các tiêu chí kiểm tra định dạng, quyền tệp khóa.",
     )
 
+    h["p"](
+        "Theo yêu cầu tổ chức đồ án gồm ba vai trò chính (nghiên cứu/kiến trúc, triển khai/thực nghiệm và kiểm thử/phân tích), "
+        "Bảng 0 dưới đây phân công nhiệm vụ giữa các thành viên Nhóm 14; cả ba thành viên cùng tham gia rà soát chéo, chạy thử "
+        "nghiệm toàn bộ quy trình và nắm vững toàn bộ nội dung đề tài:",
+        space_after=4,
+    )
+    role_headers = ["Thành viên", "MSSV", "Vai trò", "Công việc thực hiện trong Đề tài 14"]
+    role_rows = [
+        (
+            "Lô Nguyễn Hoàng Long",
+            "019206004121",
+            "Kiến trúc / chuẩn bị",
+            "Nghiên cứu lý thuyết PKI, thiết kế sơ đồ kiến trúc CA 2 tầng & mạng Docker pki-net, cấu hình OpenSSL (root-ca.cnf, intermediate-ca.cnf), biên tập báo cáo.",
+        ),
+        (
+            "Nguyễn Minh Hoàng",
+            "082206001298",
+            "Triển khai",
+            "Xây dựng Docker Compose, viết bộ script vòng đời PKI (01_setup_ca.sh – 05_reissue_user.sh, init_all_pki.sh), cấp phát chứng thư và cấu hình 5 Virtual Hosts Nginx (HTTPS, mTLS, ssl_crl).",
+        ),
+        (
+            "Phạm Văn Đạt",
+            "051206011533",
+            "Kiểm thử / minh chứng",
+            "Viết và thực thi kịch bản kiểm thử (run_all_tests.sh, run_extended_tests.sh, demo_report.sh, eval_rubric.sh), thu thập log TC01–TC09, chụp 13 ảnh minh chứng và lập bảng đối chiếu kết quả.",
+        ),
+    ]
+    h["table"](
+        "BẢNG PHÂN CÔNG NHIỆM VỤ VÀ VAI TRÒ THÀNH VIÊN (NHÓM 14)",
+        role_headers,
+        role_rows,
+        [1.45, 0.95, 1.35, 2.85],
+        center_cols=[1],
+    )
+
     h["h2"]("D. Cấu trúc của Báo cáo")
     h["p"](
-        "Phần tiếp theo của báo cáo được bố cục như sau: Phần II trình bày cơ sở lý thuyết PKI, mô hình hai cấp, vai trò RA/CSR, "
-        "so sánh CRL và OCSP, phân tích rủi ro lộ khóa riêng, liên hệ TLS 1.3 và kiến trúc mạng Docker; Phần III trình bày quy "
-        "trình lệnh OpenSSL đầy đủ qua các pha vòng đời, cấu hình Nginx thực tế, phân tích 6 ca kiểm thử kèm bằng chứng từ nhật ký "
-        "kiểm chứng; Phần IV tổng kết bài học kỹ thuật và đề xuất hướng phát triển."
+        "Phần tiếp theo của báo cáo được bố cục như sau: Phần II trình bày nền tảng mật mã bất đối xứng, mô hình CA hai cấp, vai trò RA/CSR, "
+        "sơ đồ vòng đời chứng thư, so sánh CRL và OCSP, phân tích rủi ro lộ khóa riêng, liên hệ TLS 1.3 và kiến trúc mạng Docker; Phần III trình bày quy "
+        "trình lệnh OpenSSL đầy đủ qua các pha vòng đời, cấu hình Nginx thực tế, phân tích các ca kiểm thử kèm bằng chứng từ nhật ký "
+        "kiểm chứng; Phần IV tổng kết kết quả, bài học kinh nghiệm, giới hạn thực nghiệm và hướng phát triển."
     )
 
     # -------------------------------------------------------------
@@ -710,9 +782,18 @@ def create_report():
     # -------------------------------------------------------------
     h["h1"]("II. CƠ SỞ LÝ THUYẾT VÀ KIẾN TRÚC HỆ THỐNG (THEORY & ARCHITECTURE)")
 
-    h["h2"]("A. Mô hình Cơ quan Chứng thực Phân tầng Hai cấp và Công thức Chuỗi tin cậy")
+    h["h2"]("A. Nền tảng Mật mã Bất đối xứng, Mô hình CA Hai cấp và Chuỗi tin cậy")
     h["p"](
-        "Hệ thống áp dụng kiến trúc CA phân tầng hai cấp gồm Root CA và Intermediate CA nhằm tách biệt gốc tin cậy khỏi tác vụ "
+        "Mật mã bất đối xứng (Asymmetric Cryptography) vận hành dựa trên cặp khóa có liên hệ toán học gồm Khóa công khai (K_Public, "
+        "được công bố rộng rãi) và Khóa riêng (K_Private, được giữ bí mật tuyệt đối bởi chủ thể sở hữu) [1, Mục 3.1, 3.6], [2, Chương 21], "
+        "[3, Mục 3.3.1–3.3.2]. Hai cơ chế sử dụng ngược chiều cặp khóa phục vụ hai mục tiêu an ninh khác nhau: (1) Bảo mật dữ liệu — bên gửi "
+        "dùng K_Public của người nhận để mã hóa thông điệp sao cho chỉ người giữ K_Private tương ứng mới giải mã được; và (2) Chữ ký số "
+        "(Digital Signature) — chủ thể dùng K_Private để ký lên giá trị băm của dữ liệu nhằm bảo đảm xác thực nguồn gốc, toàn vẹn và không thể "
+        "chối bỏ khi bất kỳ bên nào dùng K_Public để kiểm chứng [1, Mục 3.6], [3, Mục 3.3.2]. Tuy nhiên, chỉ dùng mật mã bất đối xứng đơn thuần "
+        "vẫn dễ bị tấn công xen giữa (MitM) đánh tráo khóa công khai nếu thiếu chứng thư số X.509 do bên thứ ba tin cậy (CA) ký xác nhận [1], [3, Mục 3.3.1]."
+    )
+    h["p"](
+        "Để cân bằng giữa tính an toàn của điểm neo tin cậy và hiệu năng cấp phát, hệ thống áp dụng kiến trúc CA phân tầng hai cấp gồm Root CA và Intermediate CA nhằm tách biệt gốc tin cậy khỏi tác vụ "
         "cấp phát hàng ngày [1], [3, Mục 3.3.3]:"
     )
     h["p"](
@@ -760,7 +841,7 @@ def create_report():
         "buộc chứng thư máy chủ phải khai báo tên miền hoặc IP trong phần mở rộng SAN thay vì dựa vào Common Name (CN) "
         "không phải là quy định riêng của giao thức TLS 1.3. Theo chuẩn X.509v3, trường Subject truyền thống không đủ linh hoạt "
         "cho định danh dịch vụ Internet nên phần mở rộng SAN được bổ sung để liệt kê tên miền/IP đích [1, Mục 4.5]; đồng thời các "
-        "trình duyệt web và ứng dụng HTTPS hiện đại yêu cầu đối chiếu qua SAN (áp dụng đồng nhất cho cả TLS 1.2 lẫn TLS 1.3) [3, tr. 53, 99]."
+        "trình duyệt web và ứng dụng HTTPS hiện đại yêu cầu đối chiếu qua SAN (áp dụng đồng nhất cho cả TLS 1.2 lẫn TLS 1.3) [3, tr. 56, 99]."
     )
     h["p"](
         "Bảng I tổng hợp thông số mật mã, phần mở rộng X.509v3 và định danh thực tế đã kiểm chứng của hệ thống:"
@@ -825,14 +906,24 @@ def create_report():
         "Vòng đời chứng thư và khóa mật mã: ",
         "(1) Khởi tạo khóa và CSR; (2) Thẩm định và ký phát hành; (3) Vận hành, giám sát và xoay vòng/gia hạn khóa định kỳ "
         "[1, Mục 4.6], [3, Mục 3.3.1, 3.3.3]; và (4) Thu hồi trước hạn khi hết tin cậy hoặc lộ khóa qua CRL [3, Mục 3.3.4] "
-        "(trong lab, kịch bản tự viết 04_renew_cert.sh minh họa gia hạn api.crt từ Serial 1001 lên Serial 1006).",
+        "(trong lab, kịch bản tự viết 04_renew_cert.sh minh họa gia hạn api.crt từ Serial 1001 lên Serial 1006 và 05_reissue_user.sh minh họa cấp lại alice.crt từ Serial 1002 lên Serial 1007).",
+    )
+    h["p"](
+        "Sơ đồ 2 trực quan hóa toàn bộ luồng chuyển trạng thái vòng đời chứng thư số X.509 trên cơ sở dữ liệu index.txt của Intermediate CA từ Serial 1000 đến 1007:",
+        space_after=4,
+    )
+    h["diagram"](
+        2,
+        "lifecycle_diagram.png",
+        "Quy trình quản lý vòng đời chứng thư số X.509 trong thực nghiệm (Serial 1000 → 1007)",
+        "Minh họa năm pha từ khởi tạo CA, đăng ký CSR/cấp phát, vận hành TLS/mTLS, gia hạn khóa (1001 → 1006) đến thu hồi CRL và cấp lại người dùng (1002 → 1007).",
     )
 
     h["h2"]("D. So sánh Cơ chế Kiểm tra Thu hồi CRL và OCSP")
     h["p"](
         "Kiểm tra trạng thái thu hồi chứng thư trước mốc thời gian notAfter có thể triển khai thông qua CRL (Certificate Revocation "
         "List) [1, Mục 4.5], [2, Mục 23.2], [3, Mục 3.3.4] hoặc OCSP (Online Certificate Status Protocol) [3, Mục 3.3.4]. Bảng II "
-        "đối chiếu năm khía cạnh kỹ thuật giữa hai cơ chế:"
+        "đối chiếu năm khía cạnh kỹ thuật giữa hai cơ chế trên cùng tiêu chí lý thuyết từ tài liệu chuẩn [1]–[3] (trong đó lab trực tiếp triển khai thực nghiệm cơ chế CRL):"
     )
 
     t2_headers = [
@@ -905,15 +996,16 @@ def create_report():
         "tấn công MitM; lộ khóa người dùng (alice.key) cho phép kẻ tấn công vượt qua xác thực mTLS tại api.lab.local/mtls. Quy trình "
         "ứng phó chuẩn 5 bước khi lộ khóa [3, Mục 3.3.4] gồm: (1) ngừng sử dụng khóa ngay không chờ hết hạn; (2) gửi yêu cầu thu hồi "
         "tức thì qua CRL/OCSP; (3) tiêu hủy vật lý mọi bản sao khóa lộ; (4) sinh cặp khóa mới kèm CSR mới để cấp lại chứng thư; "
-        "(5) kiểm toán nhật ký thiệt hại. Trong lab thực nghiệm, quản trị viên thu hồi alice.crt (Serial 1002) với lý do keyCompromise, "
-        "cập nhật ca-chain.crl.pem và chạy nginx -s reload để chặn ngay mọi kết nối (HTTP 400 kèm lỗi error 23).",
+        "(5) kiểm toán nhật ký thiệt hại. Trong lab thực nghiệm, quản trị viên thu hồi chứng thư cũ của Alice (Serial 1002, lưu trữ thành "
+        "alice_1002_revoked.crt) với lý do keyCompromise, cập nhật ca-chain.crl.pem và chạy nginx -s reload để chặn ngay mọi kết nối "
+        "(HTTP 400 kèm lỗi error 23), đồng thời cấp lại alice.crt mới (Serial 1007) với cặp khóa mới qua 05_reissue_user.sh.",
     )
     h["p"](
         "Các biện pháp giảm thiểu thực tiễn gồm: (1) Cô lập Root CA ngoại tuyến thực sự (tách biệt vật lý trong sản xuất, phân biệt "
         "với mô phỏng thư mục trong Docker) [1], [3, Mục 3.3.3]; (2) Lưu trữ khóa trong phần cứng bảo mật chuyên dụng (HSM / TPM) "
         "không cho phép xuất khóa bản rõ [3, Mục 3.3.1]; (3) Xoay vòng khóa định kỳ và giới hạn thời hạn hiệu lực chứng thư [3, Mục 3.3.1]; "
         "và (4) Siết quyền truy cập tệp khóa theo nguyên tắc đặc quyền tối thiểu [3, Mục 3.3.1] (600/400 — trong lab đã kiểm chứng "
-        "chmod 600 trên toàn bộ 17/17 tệp .key trong container pki-client)."
+        "chmod 600 trên toàn bộ 19/19 tệp .key trong container pki-client)."
     )
 
     h["h2"]("F. Liên hệ Hạ tầng PKI với Quy trình Bắt tay TLS 1.3")
@@ -964,6 +1056,16 @@ def create_report():
         "Đóng vai trò nút quản trị CA mô phỏng, máy trạm người dùng (alice) và môi trường thực thi bộ kịch bản kiểm thử qua phân giải "
         "DNS nội bộ của Docker.",
     )
+    h["p"](
+        "Sơ đồ 1 trình bày kiến trúc tổng thể giữa hạ tầng PKI phân tầng hai cấp, container kiểm thử pki-client, máy chủ pki-web và kết nối trình duyệt trên máy chủ Windows:",
+        space_after=4,
+    )
+    h["diagram"](
+        1,
+        "arch_diagram.png",
+        "Kiến trúc hạ tầng PKI phân tầng hai cấp và mạng Docker cô lập (pki-net)",
+        "Tách biệt thư mục khóa bí mật CA (./pki/) khỏi container web (./artifacts/certs:ro) và phân luồng kiểm thử 5 Virtual Hosts Nginx trên mạng bridge nội bộ.",
+    )
 
     # -------------------------------------------------------------
     # SECTION III. TRIỂN KHAI VÀ KẾT QUẢ THỰC NGHIỆM
@@ -995,8 +1097,10 @@ def create_report():
         "    -key /workspace/pki/intermediate/private/inter-ca.key -out /workspace/pki/intermediate/csr/inter-ca.csr\n"
         "openssl ca -config /workspace/pki/config/root-ca.cnf -extensions v3_intermediate_ca -days 1825 -notext -md sha256 -batch \\\n"
         "    -in /workspace/pki/intermediate/csr/inter-ca.csr -out /workspace/pki/intermediate/certs/inter-ca.crt\n"
-        "cat /workspace/pki/intermediate/certs/inter-ca.crt /workspace/pki/root/certs/root-ca.crt > /workspace/artifacts/certs/ca-chain.crt",
-        label="Lệnh OpenSSL khởi tạo hệ thống CA phân tầng hai cấp:",
+        "openssl ca -config /workspace/pki/config/intermediate-ca.cnf -gencrl -out /workspace/pki/intermediate/crl/inter.crl.pem\n"
+        "cat /workspace/pki/intermediate/certs/inter-ca.crt /workspace/pki/root/certs/root-ca.crt > /workspace/artifacts/certs/ca-chain.crt\n"
+        "cat /workspace/pki/intermediate/crl/inter.crl.pem /workspace/pki/root/crl/root.crl.pem > /workspace/artifacts/certs/ca-chain.crl.pem",
+        label="Lệnh OpenSSL khởi tạo hệ thống CA phân tầng hai cấp và chuỗi tin cậy/CRL ban đầu:",
     )
 
     h["h3"]("2) Cấp phát chứng thư cho 2 dịch vụ (secure, api), 1 người dùng (alice) và các mẫu kiểm thử")
@@ -1031,14 +1135,16 @@ def create_report():
         label="Lệnh tạo khóa, CSR và ký cấp phát End-Entity (02_issue_certs.sh):",
     )
 
-    h["h3"]("3) Gia hạn chứng thư (04_renew_cert.sh) và Thu hồi qua CRL (03_revoke_crl.sh)")
+    h["h3"]("3) Gia hạn chứng thư (04_renew_cert.sh), Thu hồi qua CRL (03_revoke_crl.sh) và Cấp lại (05_reissue_user.sh)")
     h["p"](
         "Trong pha gia hạn cho dịch vụ api.lab.local (04_renew_cert.sh), hệ thống sinh cặp khóa mới api_renew.key thay vì tái sử "
         "dụng khóa cũ, phát hành chứng thư mới Serial 1006 thời hạn 730 ngày (Nov 14 06:20:19 2026 GMT đến Nov 13 06:20:19 2028 GMT) "
         "và thu hồi chứng thư cũ Serial 1001 với mã lý do superseded. Tiếp theo, ở pha thu hồi (03_revoke_crl.sh và quy trình kiểm "
-        "chứng thu hồi khóa Alice), các chứng thư revoked.crt (1004), bob.crt (1005) và alice.crt (1002) được thu hồi với lý do "
-        "keyCompromise; tệp inter.crl.pem được tái xuất bản (CRL Number 4100), ghép với root.crl.pem (CRL Number 4096) thành "
-        "ca-chain.crl.pem và nạp lại cấu hình Nginx:"
+        "chứng thu hồi khóa Alice), các chứng thư revoked.crt (1004), bob.crt (1005) và bản Alice cũ (1002) được thu hồi với lý do "
+        "keyCompromise; tệp inter.crl.pem được tái xuất bản (CRL Number 4102), ghép với root.crl.pem (CRL Number 4097) thành "
+        "ca-chain.crl.pem và nạp lại cấu hình Nginx. Cuối cùng, kịch bản 05_reissue_user.sh lưu trữ cặp khóa/chứng thư cũ đã thu hồi "
+        "thành alice_1002_revoked.{crt,key} để đối chứng kiểm thử (demo_report.sh tc07b) và phát hành lại alice.crt mới (Serial 1007) "
+        "với cặp khóa riêng mới:",
     )
     h["code"](
         "# --- (d) Gia hạn api.lab.local (1001 superseded -> 1006 valid 730 ngày) ---\n"
@@ -1048,39 +1154,43 @@ def create_report():
         "openssl ca -config /workspace/pki/config/intermediate-ca.cnf -extfile /tmp/api_renew_ext.cnf -days 730 -notext -md sha256 -batch \\\n"
         "    -in /workspace/pki/intermediate/csr/api_renew.csr -out /workspace/pki/intermediate/certs/api_renew.crt\n"
         "openssl ca -config /workspace/pki/config/intermediate-ca.cnf -revoke /workspace/pki/intermediate/certs/api_old.crt -crl_reason superseded -batch\n\n"
-        "# --- (e) Thu hồi alice.crt (1002) / revoked.crt (1004) & Tái tạo CRL Chain ---\n"
+        "# --- (e) Thu hồi Alice cũ (1002) / revoked.crt (1004) & Tái tạo CRL Chain ---\n"
         "openssl ca -config /workspace/pki/config/intermediate-ca.cnf -revoke /workspace/pki/intermediate/certs/alice.crt -crl_reason keyCompromise -batch\n"
         "openssl ca -config /workspace/pki/config/intermediate-ca.cnf -gencrl -out /workspace/pki/intermediate/crl/inter.crl.pem -batch\n"
         "cp /workspace/pki/intermediate/crl/inter.crl.pem /workspace/artifacts/certs/inter.crl.pem\n"
         "cat /workspace/artifacts/certs/inter.crl.pem /workspace/artifacts/certs/root.crl.pem > /workspace/artifacts/certs/ca-chain.crl.pem\n"
-        "docker compose exec -T web nginx -t && docker compose exec -T web nginx -s reload",
-        label="Lệnh gia hạn chứng thư api.crt và thu hồi alice.crt qua CRL:",
+        "docker compose exec -T web nginx -t && docker compose exec -T web nginx -s reload\n\n"
+        "# --- (f) Lưu trữ bản thu hồi & Cấp lại chứng thư mới cho Alice (05_reissue_user.sh -> Serial 1007) ---\n"
+        "bash /workspace/pki/scripts/05_reissue_user.sh alice Alice alice@lab.local",
+        label="Lệnh gia hạn api.crt, thu hồi qua CRL và cấp lại alice.crt (Serial 1007):",
     )
 
-    h["h3"]("4) Bằng chứng Kiểm kê Chứng thư (2 dịch vụ + 1 người dùng) và Phân quyền Khóa riêng")
+    h["h3"]("4) Bằng chứng Kiểm kê Chứng thư (2 dịch vụ + người dùng) và Phân quyền Khóa riêng")
     h["p"](
-        "Kết quả trích xuất trực tiếp từ tệp kiểm chứng thực nghiệm (evidence_logs.txt, Phần 2 và Phần 5) xác nhận sự tồn tại "
-        "và các thuộc tính X.509v3 thực tế của 2 chứng thư dịch vụ (secure.crt, api.crt), 1 chứng thư người dùng (alice.crt) "
-        "cùng cơ sở dữ liệu index.txt và quyền truy cập tệp khóa 600/400 (cụ thể chmod 600 xác minh trên 17/17 tệp .key trong container):"
+        "Kết quả kiểm kê trực tiếp trên container pki-client (tổng hợp trong Bảng III / TABLE III) xác nhận sự tồn tại "
+        "và các thuộc tính X.509v3 thực tế của 2 chứng thư dịch vụ (secure.crt, api.crt), chứng thư người dùng (alice.crt cấp lại Serial 1007 "
+        "và bản lưu alice_1002_revoked.crt) cùng cơ sở dữ liệu 8 dòng index.txt và quyền truy cập tệp khóa 600/400 "
+        "(cụ thể chmod 600 xác minh trên toàn bộ 19/19 tệp .key trong container):"
     )
     h["code"](
-        "# Trích xuất pki/intermediate/index.txt sau khi gia hạn api.crt (1006) và thu hồi alice.crt (1002):\n"
+        "# Trích xuất pki/intermediate/index.txt sau khi gia hạn api.crt (1006) và cấp lại alice.crt (1007):\n"
         "V\t271105015938Z\t\t1000\tunknown\t/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=secure.lab.local\n"
         "R\t271105015938Z\t261114062019Z,superseded\t1001\tunknown\t.../CN=api.lab.local\n"
         "R\t271105015938Z\t261114063506Z,keyCompromise\t1002\tunknown\t.../CN=Alice/emailAddress=alice@lab.local\n"
         "V\t200102000000Z\t\t1003\tunknown\t.../CN=expired.lab.local\n"
         "R\t271105015939Z\t261105015939Z,keyCompromise\t1004\tunknown\t.../CN=revoked.lab.local\n"
         "R\t271114061502Z\t261114061536Z,keyCompromise\t1005\tunknown\t.../CN=Bob/emailAddress=bob@lab.local\n"
-        "V\t281113062019Z\t\t1006\tunknown\t.../CN=api.lab.local\n\n"
+        "V\t281113062019Z\t\t1006\tunknown\t.../CN=api.lab.local\n"
+        "V\t271116033217Z\t\t1007\tunknown\t.../CN=Alice/emailAddress=alice@lab.local\n\n"
         "# Kết quả kiểm tra chuỗi + CRL 2 tầng cho 2 dịch vụ hợp lệ:\n"
         "$ openssl verify -crl_check_all -CAfile /workspace/artifacts/certs/ca-chain.crt \\\n"
         "    -CRLfile /workspace/artifacts/certs/ca-chain.crl.pem /workspace/artifacts/certs/secure.crt /workspace/artifacts/certs/api.crt\n"
         "/workspace/artifacts/certs/secure.crt: OK\n"
         "/workspace/artifacts/certs/api.crt: OK\n\n"
-        "# Kiểm tra quyền khóa riêng (17/17 tệp .key đều trả về mode 600):\n"
+        "# Kiểm tra quyền khóa riêng (19/19 tệp .key đều trả về mode 600):\n"
         "$ stat -c '%a %n' /workspace/pki/root/private/*.key /workspace/pki/intermediate/private/*.key /workspace/artifacts/certs/*.key\n"
-        "600 /workspace/pki/root/private/root-ca.key  (+ 9 tệp ở intermediate/private/*.key và 7 tệp ở artifacts/certs/*.key -> 600)",
-        label="Trích xuất nhật ký kiểm kê chứng thư và phân quyền khóa riêng từ evidence_logs.txt:",
+        "600 /workspace/pki/root/private/root-ca.key  (+ 10 tệp ở intermediate/private/*.key và 8 tệp ở artifacts/certs/*.key -> 600)",
+        label="Trích xuất nhật ký kiểm kê chứng thư (8 dòng index.txt) và phân quyền khóa riêng (19 tệp .key):",
     )
 
     t3_headers = ["Tệp chứng thư", "Vai trò / Đối tượng", "Serial", "Trạng thái & Hiệu lực", "SAN / Định danh X.509v3 thực tế"]
@@ -1102,9 +1212,16 @@ def create_report():
         (
             "alice.crt",
             "Người dùng 1 (mTLS Client)",
-            "1002",
-            "V khi chạy TC03; R (keyCompromise) khi kiểm chứng Nginx CRL",
+            "1007 (cấp lại từ 1002)",
+            "V — 365 ngày (16/11/2026–16/11/2027)",
             "EKU: clientAuth; không gắn SAN; định danh qua Subject DN (CN=Alice, emailAddress=alice@lab.local)",
+        ),
+        (
+            "alice_1002_revoked.crt",
+            "Bản lưu Alice đã thu hồi (TC07b)",
+            "1002",
+            "R (keyCompromise)",
+            "EKU: clientAuth; lưu trữ làm bằng chứng chặn mTLS qua CRL sau khi cấp lại 1007",
         ),
         (
             "expired.crt",
@@ -1120,6 +1237,20 @@ def create_report():
             "R (keyCompromise)",
             "SAN: DNS:revoked.lab.local, DNS:localhost, IP:127.0.0.1",
         ),
+        (
+            "bob.crt",
+            "Người dùng 2 kiểm thử TC07",
+            "1005",
+            "R (keyCompromise)",
+            "EKU: clientAuth; Subject DN: CN=Bob, emailAddress=bob@lab.local (bị chặn HTTP 400 qua ssl_crl)",
+        ),
+        (
+            "untrusted.crt",
+            "Dịch vụ kiểm thử TC05",
+            "Rogue CA (tự sinh)",
+            "Không tin cậy (num=20)",
+            "Issuer: CN=Rogue Root CA; SAN: DNS:untrusted.lab.local, DNS:localhost, IP:127.0.0.1",
+        ),
     ]
     h["table"](
         "TABLE III. KIỂM KÊ CHỨNG THƯ PHÁT HÀNH (2 DỊCH VỤ, 1 NGƯỜI DÙNG) VÀ CHỨNG THƯ KIỂM THỬ",
@@ -1131,7 +1262,7 @@ def create_report():
 
     h["p"](
         "Hình minh chứng thực tế dưới đây xác nhận phần mở rộng X.509v3 SAN của secure.crt (Fig. 1), cơ sở dữ liệu index.txt "
-        "với đầy đủ 2 dịch vụ (secure.lab.local, api.lab.local) cùng 1 người dùng (Alice) và quyền 600 trên toàn bộ 17 tệp khóa "
+        "với đầy đủ 8 dòng chứng thư (gồm 2 dịch vụ secure.lab.local, api.lab.local và người dùng Alice Serial 1002/1007) cùng quyền 600 trên toàn bộ 19 tệp khóa "
         "riêng .key trong container pki-client (Fig. 2):",
         space_after=4,
     )
@@ -1142,7 +1273,7 @@ def create_report():
     h["p"](
         "Các Virtual Hosts thực tế được nạp trong container pki-web tại /etc/nginx/conf.d/. Sau khi hiệu chỉnh và rà soát, "
         "lệnh docker compose exec -T web nginx -t xác nhận syntax is ok và test is successful; tệp ca-chain.crl.pem nạp vào "
-        "Nginx chứa 2 khối CRL (Intermediate CRL Number 4100 và Root CRL Number 4096) với mã băm SHA-256 daf93b27... giống hệt "
+        "Nginx chứa 2 khối CRL (Intermediate CRL Number 4102 và Root CRL Number 4097) với mã băm SHA-256 eed5c499... giống hệt "
         "nhau trên cả pki-web và pki-client."
     )
 
@@ -1155,7 +1286,7 @@ def create_report():
         "server {\n"
         "    listen 443 ssl default_server;\n"
         "    server_name secure.lab.local localhost 127.0.0.1;\n"
-        "    ssl_certificate /etc/nginx/certs/secure.crt;\n"
+        "    ssl_certificate /etc/nginx/certs/secure.fullchain.crt;\n"
         "    ssl_certificate_key /etc/nginx/certs/secure.key;\n"
         "    ssl_protocols TLSv1.2 TLSv1.3;\n"
         "    ssl_prefer_server_ciphers on;\n"
@@ -1178,7 +1309,7 @@ def create_report():
         "    listen 443 ssl;\n"
         "    server_name api.lab.local;\n"
         "    error_log /var/log/nginx/error.log info;\n\n"
-        "    ssl_certificate /etc/nginx/certs/api.crt;\n"
+        "    ssl_certificate /etc/nginx/certs/api.fullchain.crt;\n"
         "    ssl_certificate_key /etc/nginx/certs/api.key;\n"
         "    ssl_protocols TLSv1.2 TLSv1.3;\n"
         "    ssl_prefer_server_ciphers on;\n\n"
@@ -1222,7 +1353,7 @@ def create_report():
         "ssl_verify_client on;, do đó revoked.conf không khai báo dư thừa ssl_crl mà để phía client kiểm tra thu hồi chứng thư "
         "máy chủ revoked.crt (Serial 1004) bằng cờ -crl_check / --crlfile trong TC06. Ngược lại, tại cổng api.lab.local/mtls, "
         "api.conf nạp ssl_crl /etc/nginx/certs/ca-chain.crl.pem; để Nginx trực tiếp kiểm tra thu hồi đối với Client Certificate: "
-        "khi alice.crt (Serial 1002) bị thu hồi, Nginx trả về HTTP/1.1 400 Bad Request (400 The SSL certificate error) và ghi log "
+        "khi chứng thư đã thu hồi (như alice_1002_revoked.crt Serial 1002) kết nối, Nginx trả về HTTP/1.1 400 Bad Request (400 The SSL certificate error) và ghi log "
         "client SSL certificate verify error: (23:certificate revoked).",
     )
 
@@ -1246,7 +1377,7 @@ def create_report():
         space_after=4,
     )
     h["code"](
-        "$ docker compose exec -T client sh -c \"openssl s_client -connect secure.lab.local:443 -CAfile /workspace/artifacts/certs/ca-chain.crt -servername secure.lab.local -tls1_3 </dev/null\"\n"
+        "$ openssl s_client -connect secure.lab.local:443 -CAfile ca-chain.crt -tls1_3\n"
         "depth=2 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA\n"
         "verify return:1\n"
         "depth=1 C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA\n"
@@ -1254,24 +1385,32 @@ def create_report():
         "depth=0 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=secure.lab.local\n"
         "verify return:1\n"
         "---\n"
+        "Certificate chain\n"
+        " 0 s:C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Server, CN=secure.lab.local\n"
+        "   i:C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA\n"
+        " 1 s:C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA\n"
+        "   i:C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA\n"
+        "---\n"
         "Peer signing digest: SHA256\n"
         "Peer signature type: RSA-PSS\n"
         "Server Temp Key: X25519, 253 bits\n"
+        "---\n"
+        "SSL handshake has read 2888 bytes and written 334 bytes\n"
         "Verification: OK\n"
         "New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384\n"
         "Verify return code: 0 (ok)",
-        label="Trích xuất bằng chứng bắt tay TLS 1.3 (evidence_logs.txt — Mục 3, Command 3.1):",
+        label="Trích xuất bằng chứng bắt tay TLS 1.3 đủ chuỗi 2 tầng (khớp Fig. 5):",
     )
     h["fig"](4, "image6.png", FIGURES[3][2], FIGURES[3][3])
     h["fig"](5, "image12.png", FIGURES[4][2], FIGURES[4][3])
 
     h["p"](
-        "Lưu ý quan sát khi truy cập từ trình duyệt trên máy chủ Windows tại https://localhost:8443 (Fig. 6): dù Nginx phục vụ "
-        "đúng nội dung 200 OK - Secure Web Service và chứng thư secure.crt có khai báo DNS:localhost trong SAN, thanh địa chỉ "
-        "trình duyệt vẫn hiển thị cảnh báo 'Không bảo mật' (chữ https gạch chéo đỏ) do Trust Store của hệ điều hành Windows chưa "
-        "import chứng thư gốc root-ca.crt và trình duyệt truy cập qua địa chỉ cổng ánh xạ localhost:8443 thay vì tên miền nội bộ "
-        "secure.lab.local (thông tin chứng thư trình bày ở Fig. 7). Ngược lại, mọi kiểm thử trong container pki-client truyền tường "
-        "minh --cacert /workspace/artifacts/certs/ca-chain.crt đều xác minh chuỗi tin cậy thành công với Verify return code: 0 (ok).",
+        "Lưu ý quan sát khi truy cập từ trình duyệt trên máy chủ Windows tại https://localhost:8443 (Fig. 6): Nginx phục vụ "
+        "đúng nội dung 200 OK - Secure Web Service và chứng thư secure.crt đã khai báo đầy đủ DNS:localhost trong SAN nên không "
+        "xảy ra lỗi sai tên miền; thanh địa chỉ trình duyệt hiển thị cảnh báo 'Không bảo mật' (chữ https gạch chéo đỏ) hoàn toàn "
+        "do Trust Store của hệ điều hành Windows chưa import chứng thư gốc root-ca.crt (thông tin chứng thư trình bày ở Fig. 7). "
+        "Ngược lại, mọi kiểm thử trong container pki-client truyền tường minh --cacert /workspace/artifacts/certs/ca-chain.crt đều "
+        "xác minh chuỗi tin cậy thành công với Verify return code: 0 (ok).",
         space_after=4,
     )
     h["fig"](6, "image9.png", FIGURES[5][2], FIGURES[5][3])
@@ -1279,33 +1418,33 @@ def create_report():
 
     h["p"](
         "3) Kịch bản TC03 — Xác thực Hai chiều mTLS (api.lab.local/mtls) và Kiểm chứng Nginx Từ chối Chứng thư Đã Thu hồi: "
-        "Khi người dùng Alice chưa bị thu hồi chứng thư (trạng thái V trong index.txt), Fig. 8 minh họa hai trạng thái đối lập: "
+        "Khi người dùng Alice sử dụng chứng thư hợp lệ đã cấp lại (trạng thái V trong index.txt), Fig. 8 minh họa hai trạng thái đối lập: "
         "truy cập không kèm Client Certificate bị Nginx từ chối với HTTP/1.1 400 Bad Request (400 No required SSL certificate was sent); "
-        "truy cập cung cấp alice.crt (Serial 1002) và alice.key được xác thực thành công với HTTP/1.1 200 OK.",
+        "truy cập cung cấp alice.crt (Serial 1007) và alice.key được xác thực thành công với HTTP/1.1 200 OK.",
         space_after=4,
     )
     h["fig"](8, "image10.png", FIGURES[7][2], FIGURES[7][3])
 
     h["p"](
-        "Sau đó, để kiểm chứng cơ chế CRL phía máy chủ Nginx trên api.lab.local/mtls, hệ thống thu hồi alice.crt (Serial 1002) "
-        "với lý do keyCompromise, tái tạo inter.crl.pem (CRL Number 4100), ghép ca-chain.crl.pem và nạp lại Nginx. Kết quả "
-        "ghi nhận trong evidence_logs.txt (Mục 4) và minh họa tại Fig. 9 chứng minh Nginx từ chối kết nối mTLS của Alice với "
-        "HTTP/1.1 400 Bad Request (400 The SSL certificate error) kèm nhật ký lỗi error 23 trên máy chủ web:",
+        "Sau đó, để kiểm chứng cơ chế CRL phía máy chủ Nginx trên api.lab.local/mtls (demo_report.sh tc07b), hệ thống dùng bản lưu "
+        "chứng thư cũ của Alice đã bị thu hồi trước đó (alice_1002_revoked.crt, Serial 1002, lý do keyCompromise trong inter.crl.pem "
+        "CRL Number 4102 / ca-chain.crl.pem đã nạp vào Nginx). Kết quả ghi nhận ở kịch bản tc07b và minh họa tại Fig. 9 chứng minh "
+        "Nginx từ chối kết nối mTLS của chứng thư đã thu hồi với HTTP/1.1 400 Bad Request (400 The SSL certificate error) kèm lỗi error 23:",
         space_after=4,
     )
     h["code"](
-        "$ docker compose exec -T client curl -i -sS --cacert /workspace/artifacts/certs/ca-chain.crt \\\n"
-        "    --cert /workspace/artifacts/certs/alice.crt --key /workspace/artifacts/certs/alice.key https://api.lab.local/mtls\n"
+        "$ docker compose exec client bash /workspace/tests/demo_report.sh tc07b\n"
+        "[1] Trạng thái Serial 1002 trong index.txt:\n"
+        "R\t271105015938Z\t261114063506Z,keyCompromise\t1002\tunknown\t/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Alice/emailAddress=alice@lab.local\n\n"
+        "[2] mTLS với chứng thư đã thu hồi (kỳ vọng HTTP 400, error 23 trong log Nginx):\n"
         "HTTP/1.1 400 Bad Request\n"
         "Server: nginx/1.27.5\n"
         "...\n"
         "<head><title>400 The SSL certificate error</title></head>\n\n"
-        "$ docker compose logs --tail 40 web\n"
-        "pki-web | 172.20.0.2 - - [14/Nov/2026:06:36:38 +0000] \"GET /mtls HTTP/1.1\" 400 215 \"-\" \"curl/8.14.1\" \"-\"\n"
-        "pki-web | 2026/11/14 06:36:38 [info] 188#188: *42 client SSL certificate verify error: (23:certificate revoked) while reading client request headers, client: 172.20.0.2, server: api.lab.local, request: \"GET /mtls HTTP/1.1\", host: \"api.lab.local\"\n\n"
-        "$ docker compose exec -T client openssl verify -crl_check -CAfile /workspace/artifacts/certs/ca-chain.crt -CRLfile /workspace/artifacts/certs/ca-chain.crl.pem /workspace/artifacts/certs/alice.crt\n"
-        "error 23 at 0 depth lookup: certificate revoked",
-        label="Trích xuất bằng chứng Nginx mTLS chặn alice.crt đã thu hồi (evidence_logs.txt — Mục 4):",
+        "[3] openssl verify -crl_check:\n"
+        "error 23 at 0 depth lookup: certificate revoked\n"
+        "error /workspace/artifacts/certs/alice_1002_revoked.crt: verification failed",
+        label="Trích xuất bằng chứng Nginx mTLS chặn chứng thư Alice cũ đã thu hồi (demo_report.sh tc07b — Fig. 9):",
     )
     h["fig"](9, "image13.png", FIGURES[8][2], FIGURES[8][3])
 
@@ -1325,7 +1464,7 @@ def create_report():
 
     h["p"](
         "6) Kịch bản TC06 — Thu hồi Chứng thư Máy chủ qua CRL (revoked.lab.local): Khi kiểm tra chứng thư máy chủ revoked.crt (Serial 1004, "
-        "thu hồi lý do keyCompromise) ở phía client bằng openssl verify -crl_check, openssl s_client -CRLfile và curl --crlfile, cả ba "
+        "thu hồi lý do keyCompromise) ở phía client bằng openssl verify -crl_check -CRLfile, openssl s_client -CRL ... -crl_check và curl --crlfile, cả ba "
         "công cụ đều báo lỗi verify error:num=23:certificate revoked và từ chối thiết lập phiên tin cậy (Fig. 12).",
         space_after=4,
     )
@@ -1341,11 +1480,11 @@ def create_report():
     t4_rows = [
         ("TC01", "Chuỗi tin cậy CA 2 tầng", "openssl verify", "secure.crt: OK", "secure.crt: OK", "PASS (1.5đ)"),
         ("TC02", "Dịch vụ HTTPS hợp lệ (TLS 1.3)", "curl, s_client -tls1_3", "HTTP 200 & code: 0 (ok)", "HTTP/1.1 200 OK; TLSv1.3, code: 0 (ok)", "PASS (1.5đ)"),
-        ("TC03", "Xác thực hai chiều mTLS (Alice)", "curl (No cert vs Valid cert)", "Chặn 400; Cho phép 200", "400 Bad Request / 200 OK (Serial 1002)", "PASS (1.5đ)"),
+        ("TC03", "Xác thực hai chiều mTLS (Alice)", "curl (No cert vs Valid cert)", "Chặn 400; Cho phép 200", "400 Bad Request / 200 OK (Serial 1007)", "PASS (1.5đ)"),
         ("TC04", "Chứng thư hết hạn", "s_client, curl", "verify error:num=10", "num=10:certificate has expired; curl (60)", "PASS (1.0đ)"),
         ("TC05", "Chứng thư Rogue CA giả mạo", "s_client, curl", "verify error:num=18/20", "num=20:unable to get local issuer; curl (60)", "PASS (1.0đ)"),
         ("TC06", "Thu hồi cert máy chủ qua CRL", "verify, s_client, curl --crlfile", "verify error:num=23", "num=23:certificate revoked; curl (60)", "PASS (1.5đ)"),
-        ("Bổ sung", "Nginx từ chối Alice đã thu hồi", "curl, s_client, docker logs web", "HTTP 400 & log error 23", "400 Bad Request + (23:certificate revoked)", "PASS (Xác minh)"),
+        ("TC07b", "Nginx từ chối alice_1002_revoked.crt", "curl, openssl verify -crl_check", "HTTP 400 & error 23", "400 Bad Request + error 23 (Serial 1002)", "PASS (Xác minh)"),
     ]
     h["table"](
         "TABLE IV. MA TRẬN ĐỐI CHIẾU KẾT QUẢ KIỂM THỬ THỰC NGHIỆM (TC01–TC06 VÀ mTLS CRL)",
@@ -1358,7 +1497,7 @@ def create_report():
 
     h["p"](
         "Bộ kiểm thử tự động do nhóm xây dựng (eval_rubric.sh) xác nhận các tiêu chí kỹ thuật gồm: chuẩn xuống dòng LF trên "
-        "toàn bộ script bash (1.0đ), quyền bảo mật tệp khóa riêng 600/400 (1.0đ — cụ thể chmod 600 xác minh trên 17/17 tệp .key "
+        "toàn bộ script bash (1.0đ), quyền bảo mật tệp khóa riêng 600/400 (1.0đ — cụ thể chmod 600 xác minh trên 19/19 tệp .key "
         "trong container) và sáu kịch bản TC01–TC06 (8.0đ) đều đạt trạng thái PASS với tổng điểm 10.0 / 10.0 (Fig. 13)."
     )
     h["fig"](13, "image3.png", FIGURES[12][2], FIGURES[12][3])
@@ -1377,8 +1516,8 @@ def create_report():
         "1) Thiết lập hạ tầng PKI phân tầng hai cấp gồm Root CA (RSA 4096-bit tự ký, mô phỏng cô lập tại thư mục pki/root/) và "
         "Intermediate CA (RSA 2048-bit ký phát hành với pathlen:0), sử dụng hàm băm SHA-256 trên nền OpenSSL 3.3.7.\n"
         "2) Phát hành chứng thư số X.509v3 khai báo SAN tường minh cho 2 dịch vụ (secure.lab.local Serial 1000 và api.lab.local "
-        "Serial 1006 sau gia hạn) cùng 1 người dùng (alice.crt Serial 1002), đáp ứng tiêu chuẩn định danh của các trình duyệt "
-        "và máy khách TLS hiện đại.\n"
+        "Serial 1006 sau gia hạn) cùng 1 người dùng (alice.crt Serial 1007, cấp lại từ bản Serial 1002 đã thu hồi qua 05_reissue_user.sh), "
+        "đáp ứng tiêu chuẩn định danh của các trình duyệt và máy khách TLS hiện đại.\n"
         "3) Triển khai xác thực hai chiều mTLS trên Nginx (api.conf) kết hợp kiểm tra CRL hai tầng (ca-chain.crl.pem qua ssl_crl), "
         "cho phép truy cập khi chứng thư hợp lệ và từ chối tức thì (HTTP 400 kèm lỗi error 23) khi thiếu chứng thư hoặc chứng thư bị thu hồi.\n"
         "4) Trình diễn đầy đủ bốn trạng thái vòng đời chứng thư (Hợp lệ, Hết hạn, Không tin cậy, Thu hồi) qua sáu kịch bản TC01–TC06 "
@@ -1390,14 +1529,40 @@ def create_report():
     h["p"](
         "Quá trình thực nghiệm rút ra bốn lưu ý kỹ thuật quan trọng: (1) Chứng thư máy chủ bắt buộc phải khai báo đầy đủ SAN "
         "thay vì phụ thuộc trường Common Name theo yêu cầu đối chiếu của trình duyệt và ứng dụng HTTPS hiện đại [1, Mục 4.5], "
-        "[3, tr. 53, 99]; (2) Với mô hình CA hai tầng, Nginx khi bật ssl_verify_depth 2 cần tệp CRL gộp cả Intermediate CRL và "
+        "[3, tr. 56, 99]; (2) Với mô hình CA hai tầng, Nginx khi bật ssl_verify_depth 2 cần tệp CRL gộp cả Intermediate CRL và "
         "Root CRL (ca-chain.crl.pem) để kiểm tra thu hồi đầy đủ trên mọi tầng của chuỗi chứng thư; (3) Kiểm soát quyền truy cập "
-        "tệp khóa riêng (chmod 600 trên toàn bộ 17 tệp .key) và chuẩn xuống dòng LF là điều kiện tiên quyết khi phát triển trên "
+        "tệp khóa riêng (chmod 600 trên toàn bộ 19/19 tệp .key) và chuẩn xuống dòng LF là điều kiện tiên quyết khi phát triển trên "
         "Windows và chạy trong container Linux; (4) Cần phân biệt rõ giới hạn mô phỏng thư mục của Root CA trong Docker với yêu "
         "cầu lưu trữ ngoại tuyến tách biệt mạng hoặc HSM ở hạ tầng thực tế [1], [3, Mục 3.3.3]."
     )
 
-    h["h2"]("C. Hướng phát triển")
+    h["h2"]("C. Giới hạn Thực nghiệm (Experimental Limitations)")
+    h["p"](
+        "Để phân tách rõ giữa dữ liệu quan sát được (Phần III), kết luận kỹ thuật (Mục IV.A) và phạm vi giới hạn của bài lab, "
+        "nhóm ghi nhận bốn giới hạn thực nghiệm sau:"
+    )
+    h["bullet"](
+        "1) Cô lập Root CA ở mức thư mục thay vì ngoại tuyến vật lý / HSM: ",
+        "Thư mục pki/root/ được tách khỏi container pki-web (không mount ./pki vào web) nhằm mô phỏng nguyên tắc tách biệt khóa gốc, "
+        "nhưng vẫn cùng nằm trên host/container quản trị chứ chưa tách mạng vật lý (air-gapped) hoặc lưu trong HSM chuyên dụng [1], [3, Mục 3.3.3].",
+    )
+    h["bullet"](
+        "2) Thực nghiệm CRL và đối chiếu lý thuyết OCSP: ",
+        "Hệ thống triển khai thực tế và đo kiểm cơ chế CRL (ca-chain.crl.pem); phần OCSP trong Bảng II là so sánh dựa trên tài liệu chuẩn "
+        "do lab chưa dựng máy chủ OCSP Responder riêng. Ngoài ra, Nginx chỉ nạp tệp CRL khi khởi động hoặc nhận lệnh nginx -s reload.",
+    )
+    h["bullet"](
+        "3) Sai khác môi trường trên Windows Host (Trust Store & Proxy bảo mật): ",
+        "Trình duyệt trên Windows chưa tự động import root-ca.crt vào Windows Trust Store (và phần mềm diệt virus có tính năng chặn HTTPS "
+        "trên cổng loopback 8443 như Avast Web Shield có thể can thiệp chứng thư cục bộ). Do đó, mọi kiểm chứng TLS/mTLS chuẩn xác được thực hiện nội bộ từ pki-client trong mạng pki-net.",
+    )
+    h["bullet"](
+        "4) Phạm vi bộ kiểm thử tự động (eval_rubric.sh): ",
+        "Kịch bản eval_rubric.sh là thang tự kiểm tra nội bộ do nhóm xây dựng để chấm nhanh định dạng LF, quyền khóa riêng và 6 ca cơ bản TC01–TC06, "
+        "không thay thế quy trình kiểm toán bảo mật độc lập và các kiểm thử mở rộng được tách riêng trong run_extended_tests.sh (TC07–TC09).",
+    )
+
+    h["h2"]("D. Hướng phát triển")
     h["p"](
         "Để mở rộng mô hình hướng tới quy mô vận hành thực tế, đề tài đề xuất hai hướng phát triển tiếp theo:"
     )
@@ -1417,9 +1582,9 @@ def create_report():
     # -------------------------------------------------------------
     h["h1"]("TÀI LIỆU THAM KHẢO (REFERENCES)")
     refs = [
-        "[1] W. Stallings, Network Security Essentials: Applications and Standards, 6th ed. Harlow, England: Pearson Education, 2017.",
-        "[2] W. Stallings and L. Brown, Computer Security: Principles and Practice, 2nd ed. Boston, MA, USA: Pearson Education, 2012.",
-        "[3] Lê Quốc Tuấn, \"Bài giảng An ninh Mạng — Chương 3: Bảo mật hệ thống mạng và Dữ liệu (Mục 3.3.1–3.3.5),\" Khoa Công nghệ Thông tin, Trường Đại học Giao thông vận tải TP. Hồ Chí Minh (UTH), 2026.",
+        "[1] W. Stallings, Network Security Essentials: Applications and Standards, 6th ed. Hoboken, NJ: Pearson, 2021.",
+        "[2] W. Stallings and L. Brown, Computer Security: Principles and Practice, 5th ed. Hoboken, NJ: Pearson, 2023.",
+        "[3] TS. Lê Quốc Tuấn, \"Bài giảng An ninh Mạng — Chương 3: Bảo mật hệ thống mạng và Dữ liệu (Mục 3.3.1–3.3.5),\" Khoa Công nghệ Số, Trường Đại học Giao thông vận tải TP. Hồ Chí Minh (UTH), 2026.",
     ]
     for r_text in refs:
         p_ref = doc.add_paragraph()
@@ -1453,14 +1618,14 @@ def create_image_appendix():
 
     # Index Table of Figures
     h["h1"]("DANH MỤC HÌNH ẢNH MINH CHỨNG (LIST OF FIGURES)")
-    idx_headers = ["Ký hiệu", "Tệp ảnh nguồn", "Tiêu đề minh chứng"]
-    idx_rows = [(f"Fig. {num}", fname, title) for num, fname, title, _ in FIGURES]
+    idx_headers = ["Ký hiệu", "Tiêu đề minh chứng"]
+    idx_rows = [(f"Fig. {num}", title) for num, _fname, title, _ in FIGURES]
     h["table"](
         "BẢNG TRA CỨU ĐỒNG BỘ HÌNH ẢNH MINH CHỨNG (Fig. 1 – Fig. 13)",
         idx_headers,
         idx_rows,
-        [0.85, 1.35, 4.4],
-        center_cols=[0, 1],
+        [1.0, 5.6],
+        center_cols=[0],
     )
 
     h["h1"]("CHI TIẾT HÌNH ẢNH MINH CHỨNG THỰC NGHIỆM (Fig. 1 – Fig. 13)")

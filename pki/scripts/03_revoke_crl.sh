@@ -24,7 +24,7 @@ revoke_cert() {
     local serial
     serial=$(openssl x509 -in "${cert_path}" -noout -serial | cut -d'=' -f2)
 
-    if awk -v s="${serial}" '$4 == s && $1 == "R" {found=1} END {exit !found}' "${INTER_DIR}/index.txt"; then
+    if awk -F'\t' -v s="${serial}" '$4 == s && $1 == "R" {found=1} END {exit !found}' "${INTER_DIR}/index.txt"; then
         echo "[!] Certificate ${cert_path} (Serial: ${serial}) is already Revoked."
     else
         echo "[+] Revoking ${cert_path} (Serial: ${serial}, Reason: ${reason})..."
@@ -41,11 +41,9 @@ echo "[+] Generating updated Intermediate CRL..."
 openssl ca -config "${CONFIG_DIR}/intermediate-ca.cnf" \
     -gencrl -out "${INTER_DIR}/crl/inter.crl.pem"
 
-if [ ! -f "${ROOT_DIR}/crl/root.crl.pem" ]; then
-    echo "[+] Generating Root CRL..."
-    openssl ca -config "${CONFIG_DIR}/root-ca.cnf" \
-        -gencrl -out "${ROOT_DIR}/crl/root.crl.pem"
-fi
+echo "[+] Generating updated Root CRL..."
+openssl ca -config "${CONFIG_DIR}/root-ca.cnf" \
+    -gencrl -out "${ROOT_DIR}/crl/root.crl.pem"
 
 cp "${INTER_DIR}/crl/inter.crl.pem" "${ARTIFACTS_CERTS}/inter.crl.pem"
 cp "${ROOT_DIR}/crl/root.crl.pem" "${ARTIFACTS_CERTS}/root.crl.pem"

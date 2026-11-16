@@ -319,12 +319,12 @@ Cách diễn đạt thông thường *"dùng khóa công khai của CA để gi�
 - **Không gắn trích dẫn vào phần thực nghiệm của nhóm**: Không gắn `[1]`, `[2]`, `[3]` vào các đoạn mô tả cấu hình Docker (`docker-compose.yml`), tệp cấu hình Nginx tự viết (`secure.conf`, `api.conf`, `revoked.conf`), kịch bản shell tự xây dựng (`01_setup_ca.sh`–`04_renew_cert.sh`, `eval_rubric.sh`) hoặc kết quả kiểm thử trong `evidence_logs.txt`.
 - **Chỉ định chính xác mục tài liệu giảng dạy** khi dùng `[3]` (cụ thể `Chương 3, Mục 3.3.1–3.3.5` cho kiến thức về hạ tầng PKI, chứng thư số X.509 và quản lý vòng đời chứng thư).
 - **Phân bổ thẻ `[1]`–`[3]` theo nội dung gốc của từng tài liệu**:
-  - `[1]`: Khái niệm chữ ký số (Mục 3.6), cấu trúc X.509, chuỗi tin cậy, CRL và mô hình PKIX/RA (Mục 4.5–4.6), bắt tay TLS và HTTPS (Mục 6.2–6.3) trong W. Stallings (2017).
-  - `[2]`: Cơ sở mật mã khóa công khai (Chương 21), SSL/TLS và HTTPS (Mục 22.3–22.4), xác thực X.509, bộ đệm CRL cục bộ và mô hình PKI (Mục 23.2–23.3) trong W. Stallings & L. Brown (2nd ed., 2012).
+  - `[1]`: Khái niệm chữ ký số (Mục 3.6), cấu trúc X.509, chuỗi tin cậy, CRL và mô hình PKIX/RA (Mục 4.5–4.6), bắt tay TLS và HTTPS (Mục 6.2–6.3) trong W. Stallings (2021).
+  - `[2]`: Cơ sở mật mã khóa công khai (Chương 21), SSL/TLS và HTTPS (Mục 22.3–22.4), xác thực X.509, bộ đệm CRL cục bộ và mô hình PKI (Mục 23.2–23.3) trong W. Stallings & L. Brown (5th ed., 2023).
   - `[3]`: Giáo trình/Bài giảng An ninh Mạng — Trường ĐH Giao thông vận tải TP.HCM, `Chương 3 (Mục 3.3.1–3.3.5)`: vòng đời khóa mật mã, cấu trúc X.509/SAN, RA/CA/Trust Anchor, so sánh CRL với OCSP, quy trình ứng phó lộ khóa 5 bước và bảo mật tầng vận chuyển TLS/HTTPS.
 
 ### 6.2. Danh mục Tài liệu tham khảo chuẩn (IEEE Style — Whitelist duy nhất)
 
-- `[1]` W. Stallings, *Network Security Essentials: Applications and Standards*, 6th ed. Harlow, England: Pearson Education, 2017.
-- `[2]` W. Stallings and L. Brown, *Computer Security: Principles and Practice*, 2nd ed. Boston, MA, USA: Pearson Education, 2012.
-- `[3]` Lê Quốc Tuấn, "Bài giảng An ninh Mạng — Chương 3: Bảo mật hệ thống mạng và Dữ liệu (Mục 3.3.1–3.3.5)," Khoa Công nghệ Thông tin, Trường Đại học Giao thông vận tải TP. Hồ Chí Minh (UTH), 2026.
+- `[1]` W. Stallings, *Network Security Essentials: Applications and Standards*, 6th ed. Hoboken, NJ: Pearson, 2021.
+- `[2]` W. Stallings and L. Brown, *Computer Security: Principles and Practice*, 5th ed. Hoboken, NJ: Pearson, 2023.
+- `[3]` TS. Lê Quốc Tuấn, "Bài giảng An ninh Mạng — Chương 3: Bảo mật hệ thống mạng và Dữ liệu (Mục 3.3.1–3.3.5)," Khoa Công nghệ Số, Trường Đại học Giao thông vận tải TP. Hồ Chí Minh (UTH), 2026.

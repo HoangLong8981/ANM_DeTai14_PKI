@@ -24,7 +24,7 @@ show_tc02() {
     curl -i --cacert "${CERTS_DIR}/ca-chain.crt" https://secure.lab.local
     echo ""
     echo "[2] Kiểm tra bắt tay TLS 1.3 & Verify return code bằng OpenSSL s_client:"
-    openssl s_client -connect secure.lab.local:443 -CAfile "${CERTS_DIR}/ca-chain.crt" -servername secure.lab.local </dev/null 2>&1 | grep -E "(depth=|Verification:|New, TLSv|Cipher is|Protocol  :|Cipher    :|Verify return code:)"
+    openssl s_client -connect secure.lab.local:443 -CAfile "${CERTS_DIR}/ca-chain.crt" -servername secure.lab.local </dev/null 2>&1 | grep -E "(depth=|Verification:|New, TLSv|Cipher is|Protocol  :|Cipher    :|Verify return code:)" || true
     echo ""
 }
 
@@ -50,7 +50,7 @@ show_tc04() {
     echo " Lệnh: openssl s_client -connect expired.lab.local:443 -CAfile ca-chain.crt"
     echo " Ý nghĩa: OpenSSL bắt đúng lỗi num=10:certificate has expired"
     echo "=========================================================================="
-    openssl s_client -connect expired.lab.local:443 -CAfile "${CERTS_DIR}/ca-chain.crt" -servername expired.lab.local </dev/null 2>&1 | grep -E "verify (error|return):num=10" -A 1
+    openssl s_client -connect expired.lab.local:443 -CAfile "${CERTS_DIR}/ca-chain.crt" -servername expired.lab.local </dev/null 2>&1 | grep -E "verify (error|return):num=10" -A 1 || true
     echo ""
     curl -i --cacert "${CERTS_DIR}/ca-chain.crt" https://expired.lab.local 2>&1 || true
     echo ""
@@ -62,7 +62,7 @@ show_tc05() {
     echo " Lệnh: openssl s_client -connect untrusted.lab.local:443 -CAfile ca-chain.crt"
     echo " Ý nghĩa: Bắt lỗi Rogue CA không nằm trong chuỗi tin cậy (num=20)"
     echo "=========================================================================="
-    openssl s_client -connect untrusted.lab.local:443 -CAfile "${CERTS_DIR}/ca-chain.crt" -servername untrusted.lab.local </dev/null 2>&1 | grep -E "verify (error|return):num=20" -A 1
+    openssl s_client -connect untrusted.lab.local:443 -CAfile "${CERTS_DIR}/ca-chain.crt" -servername untrusted.lab.local </dev/null 2>&1 | grep -E "verify (error|return):num=(18|20)" -A 1 || true
     echo ""
     curl -i --cacert "${CERTS_DIR}/ca-chain.crt" https://untrusted.lab.local 2>&1 || true
     echo ""
@@ -78,7 +78,7 @@ show_tc06() {
     openssl verify -CAfile "${CERTS_DIR}/ca-chain.crt" -CRLfile "${CERTS_DIR}/inter.crl.pem" -crl_check "${CERTS_DIR}/revoked.crt" || true
     echo ""
     echo "[2] Kiểm tra kết nối s_client kèm CRL:"
-    openssl s_client -connect revoked.lab.local:443 -CAfile "${CERTS_DIR}/ca-chain.crt" -CRL "${CERTS_DIR}/inter.crl.pem" -crl_check -servername revoked.lab.local </dev/null 2>&1 | grep -E "verify (error|return):num=23" -A 1
+    openssl s_client -connect revoked.lab.local:443 -CAfile "${CERTS_DIR}/ca-chain.crt" -CRL "${CERTS_DIR}/inter.crl.pem" -crl_check -servername revoked.lab.local </dev/null 2>&1 | grep -E "verify (error|return):num=23" -A 1 || true
     echo ""
     echo "[3] Kết nối cURL kèm --crlfile:"
     curl -i --cacert "${CERTS_DIR}/ca-chain.crt" --crlfile "${CERTS_DIR}/inter.crl.pem" https://revoked.lab.local 2>&1 || true
@@ -120,7 +120,7 @@ show_tc07_alice_revoked() {
     echo " Điều kiện: đã chạy 05_reissue_user.sh và đã thu hồi chứng thư cũ trước đó"
     echo "=========================================================================="
     local crt key serial
-    crt=$(ls "${CERTS_DIR}"/alice_*_revoked.crt 2>/dev/null | head -n1 || true)
+    crt=$(ls -t "${CERTS_DIR}"/alice_*_revoked.crt 2>/dev/null | head -n1 || true)
     if [ -z "${crt}" ]; then
         echo "[-] Chưa có alice_<serial>_revoked.crt (chưa từng thu hồi/cấp lại Alice)."
         return 0

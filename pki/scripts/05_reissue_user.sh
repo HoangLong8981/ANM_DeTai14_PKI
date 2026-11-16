@@ -21,7 +21,7 @@ if [ ! -f "${CRT}" ]; then
 fi
 
 OLD_SERIAL=$(openssl x509 -in "${CRT}" -noout -serial | cut -d= -f2)
-if ! awk -v s="${OLD_SERIAL}" '$1 == "R" && $4 == s {found=1} END {exit !found}' "${INTER_DIR}/index.txt"; then
+if ! awk -F'\t' -v s="${OLD_SERIAL}" '$1 == "R" && $4 == s {found=1} END {exit !found}' "${INTER_DIR}/index.txt"; then
     echo "[=] ${NAME}.crt (Serial ${OLD_SERIAL}) is still valid; nothing to reissue."
     exit 0
 fi

@@ -5,3 +5,4 @@ V	200102000000Z		1003	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI 
 R	271105015939Z	261105015939Z,keyCompromise	1004	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=revoked.lab.local
 R	271114061502Z	261114061536Z,keyCompromise	1005	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Bob/emailAddress=bob@lab.local
 V	281113062019Z		1006	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=api.lab.local
+V	271116033217Z		1007	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Alice/emailAddress=alice@lab.local

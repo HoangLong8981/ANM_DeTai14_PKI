@@ -11,19 +11,19 @@ echo "=========================================================="
 
 # 1. Linter & Build (2.0 pts)
 LINTER_SCORE=0
-CRLF_COUNT=$(grep -l -U $'\r' "${WORKSPACE}"/pki/scripts/*.sh "${WORKSPACE}"/tests/*.sh 2>/dev/null | wc -l || true)
+CRLF_COUNT=$(grep -l -U $'\r' "${WORKSPACE}"/pki/scripts/*.sh "${WORKSPACE}"/tests/*.sh "${WORKSPACE}"/pki/config/*.cnf "${WORKSPACE}"/services/nginx/conf.d/*.conf 2>/dev/null | wc -l || true)
 if [ "${CRLF_COUNT}" -eq 0 ]; then
-    echo "[PASS] [1.0 pt] Không có ký tự CRLF trong các file script."
+    echo "[PASS] [1.0 pt] Không có ký tự CRLF trong các file script và cấu hình."
     LINTER_SCORE=$(awk "BEGIN {print $LINTER_SCORE + 1.0}")
 else
     echo "[FAIL] [0.0 pt] Phát hiện file có ký tự CRLF!"
 fi
 
 KEY_PERM_OK=1
-for k in "${WORKSPACE}"/artifacts/certs/*.key; do
+for k in "${WORKSPACE}"/pki/root/private/*.key "${WORKSPACE}"/pki/intermediate/private/*.key "${WORKSPACE}"/artifacts/certs/*.key; do
     if [ -f "$k" ]; then
-        PERM=$(stat -c "%a" "$k" 2>/dev/null || stat -f "%Op" "$k" 2>/dev/null || echo "600")
-        if [ "$PERM" != "600" ] && [ "$PERM" != "400" ] && [ "$PERM" != "700" ]; then
+        PERM=$(stat -c "%a" "$k" 2>/dev/null || stat -f "%Op" "$k" 2>/dev/null || true)
+        if [ "$PERM" != "600" ] && [ "$PERM" != "400" ]; then
             KEY_PERM_OK=0
         fi
     fi
@@ -39,7 +39,7 @@ TOTAL_SCORE=$(awk "BEGIN {print $TOTAL_SCORE + $LINTER_SCORE}")
 
 # 2. TC01 (1.5 pts)
 TC01_SCORE=0
-if [ -f "${LOGS_DIR}/TC01_chain_verify.log" ] && grep -q "OK" "${LOGS_DIR}/TC01_chain_verify.log"; then
+if [ -f "${LOGS_DIR}/TC01_chain_verify.log" ] && grep -qE ": OK$" "${LOGS_DIR}/TC01_chain_verify.log"; then
     echo "[PASS] [1.5 pt] TC01 (Chain of Trust): Xác minh chuỗi tin cậy thành công (OK)."
     TC01_SCORE=1.5
 else

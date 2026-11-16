@@ -1,64 +1,10 @@
-=== TC07: Nginx Server-Side CRL Enforcement on mTLS (api.lab.local) ===
---- 1. Bob Client Certificate Info BEFORE Revocation ---
-subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Engineering, CN=Bob, emailAddress=bob@lab.local
-issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
-serial=1005
-notBefore=Nov 14 06:15:02 2026 GMT
-notAfter=Nov 14 06:15:02 2027 GMT
-
---- 2. Test mTLS Access with Bob BEFORE Revocation (Expected: 200 OK) ---
+--- Post-Revocation Live Check ---
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
-
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 200 OK
-
-100   224  100   224    0     0   1618      0 --:--:-- --:--:-- --:--:--  1635
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 400 Bad Request
+100   215  100   215    0     0   1594      0 --:--:-- --:--:-- --:--:--  1604
 Server: nginx/1.27.5
-Date: Sat, 14 Nov 2026 06:15:36 GMT
-Content-Type: application/json
-Content-Length: 224
-Connection: keep-alive
-
-{"status": 200, "message": "200 OK - mTLS Authenticated", "auth": "mTLS Authenticated", "client_dn": "emailAddress=bob@lab.local,CN=Bob,OU=Engineering,O=UTH PKI Lab,L=Ho Chi Minh City,ST=Ho Chi Minh,C=VN", "serial": "1005"}
-
---- 3. Revoking Bob Certificate (keyCompromise) & Rebuilding CRL Chain ---
-==========================================================
-[*] Step 3: Revoking Certificates and Updating CRL Chain
-==========================================================
-[!] Certificate /workspace/pki/intermediate/certs/revoked.crt (Serial: 1004) is already Revoked.
-[+] Revoking /workspace/pki/intermediate/certs/bob.crt (Serial: 1005, Reason: keyCompromise)...
-Using configuration from /workspace/pki/config/intermediate-ca.cnf
-Database updated
-[+] Updated inter.crl.pem & ca-chain.crl.pem and reloaded Nginx.
-
---- 4. Intermediate CRL Revoked Certificates List ---
-Revoked Certificates:
-    Serial Number: 1001
-        Revocation Date: Nov 14 06:20:19 2026 GMT
-        CRL entry extensions:
-            X509v3 CRL Reason Code: 
-                Superseded
-    Serial Number: 1004
-        Revocation Date: Nov  5 01:59:39 2026 GMT
-        CRL entry extensions:
-            X509v3 CRL Reason Code: 
-                Key Compromise
-    Serial Number: 1005
-        Revocation Date: Nov 14 06:15:36 2026 GMT
-        CRL entry extensions:
-            X509v3 CRL Reason Code: 
-                Key Compromise
-    Signature Algorithm: sha256WithRSAEncryption
-
---- 5. Test mTLS Access with Bob AFTER Revocation & nginx -s reload (Expected: 400 Bad Request) ---
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 400 Bad Request
-
-100   215  100   215    0     0   1546      0 --:--:-- --:--:-- --:--:--  1557
-Server: nginx/1.27.5
-Date: Sat, 14 Nov 2026 06:20:36 GMT
+Date: Mon, 16 Nov 2026 15:08:37 GMT
 Content-Type: text/html
 Content-Length: 215
 Connection: close
@@ -72,23 +18,14 @@ Connection: close
 </body>
 </html>
 
---- 6. Verify Alice Valid Client Certificate STILL Succeeds (Expected: 200 OK) ---
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
-
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 200 OK
-
-100   228  100   228    0     0   1561      0 --:--:-- --:--:-- --:--:--  1572
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 200 OK
+100   228  100   228    0     0   1782      0 --:--:-- --:--:-- --:--:--  1795
 Server: nginx/1.27.5
-Date: Sat, 14 Nov 2026 06:20:36 GMT
+Date: Mon, 16 Nov 2026 15:08:37 GMT
 Content-Type: application/json
 Content-Length: 228
 Connection: keep-alive
 
-{"status": 200, "message": "200 OK - mTLS Authenticated", "auth": "mTLS Authenticated", "client_dn": "emailAddress=alice@lab.local,CN=Alice,OU=Engineering,O=UTH PKI Lab,L=Ho Chi Minh City,ST=Ho Chi Minh,C=VN", "serial": "1002"}
-
---- 7. Nginx Server Error & Access Log Evidence ---
-pki-web  | 2026/11/14 06:20:36 [info] 147#147: *20 client SSL certificate verify error: (23:certificate revoked) while reading client request headers, client: 172.20.0.2, server: api.lab.local, request: "GET /mtls HTTP/1.1", host: "api.lab.local"
-pki-web  | 172.20.0.2 - - [14/Nov/2026:06:20:36 +0000] "GET /mtls HTTP/1.1" 400 215 "-" "curl/8.14.1" "-"
-pki-web  | 172.20.0.2 - - [14/Nov/2026:06:20:36 +0000] "GET /mtls HTTP/1.1" 200 228 "-" "curl/8.14.1" "-"
-
+{"status": 200, "message": "200 OK - mTLS Authenticated", "auth": "mTLS Authenticated", "client_dn": "emailAddress=alice@lab.local,CN=Alice,OU=Engineering,O=UTH PKI Lab,L=Ho Chi Minh City,ST=Ho Chi Minh,C=VN", "serial": "1007"}

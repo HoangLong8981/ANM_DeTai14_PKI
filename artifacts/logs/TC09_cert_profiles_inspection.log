@@ -54,9 +54,9 @@ notAfter=Nov 13 06:20:19 2028 GMT
 --- 5. User 1: Alice Client Certificate (Valid, clientAuth) ---
 subject=C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Engineering, CN=Alice, emailAddress=alice@lab.local
 issuer=C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
-serial=1002
-notBefore=Nov  5 01:59:38 2026 GMT
-notAfter=Nov  5 01:59:38 2027 GMT
+serial=1007
+notBefore=Nov 16 03:32:17 2026 GMT
+notAfter=Nov 16 03:32:17 2027 GMT
             X509v3 Extended Key Usage: 
                 TLS Web Client Authentication
             X509v3 Subject Key Identifier: 
@@ -70,8 +70,8 @@ notAfter=Nov 14 06:15:02 2027 GMT
 
 --- 7. Intermediate CRL Current Summary ---
         Issuer: C=VN, ST=Ho Chi Minh, O=UTH PKI Lab, OU=Issuing CA Department, CN=UTH Intermediate CA
-        Last Update: Nov 14 06:20:19 2026 GMT
-        Next Update: Dec 14 06:20:19 2026 GMT
+        Last Update: Nov 16 03:32:17 2026 GMT
+        Next Update: Dec 16 03:32:17 2026 GMT
         CRL extensions:
 --
     Serial Number: 1001
@@ -79,6 +79,11 @@ notAfter=Nov 14 06:15:02 2027 GMT
 --
             X509v3 CRL Reason Code: 
                 Superseded
+    Serial Number: 1002
+        Revocation Date: Nov 14 06:35:06 2026 GMT
+--
+            X509v3 CRL Reason Code: 
+                Key Compromise
     Serial Number: 1004
         Revocation Date: Nov  5 01:59:39 2026 GMT
 --

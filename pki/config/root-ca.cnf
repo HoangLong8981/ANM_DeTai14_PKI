@@ -16,7 +16,7 @@ certificate       = $dir/certs/root-ca.crt
 
 # CRL settings
 crlnumber         = $dir/crlnumber
-crl               = $dir/crl/root-ca.crl
+crl               = $dir/crl/root.crl.pem
 crl_extensions    = crl_ext
 default_crl_days  = 30
 
@@ -30,6 +30,7 @@ policy            = policy_strict
 [ policy_strict ]
 countryName             = match
 stateOrProvinceName     = match
+localityName            = optional
 organizationName        = match
 organizationalUnitName  = optional
 commonName              = supplied

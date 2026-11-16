@@ -45,6 +45,7 @@ echo "[*] Verifying TC07: Nginx blocks revoked client cert (Bob) and permits Ali
         --cert "${CERTS_DIR}/alice.crt" --key "${CERTS_DIR}/alice.key" \
         https://api.lab.local/mtls || true
 } > "${LOGS_DIR}/TC07_post_revocation_check.log" 2>&1
+cp "${LOGS_DIR}/TC07_post_revocation_check.log" "${LOGS_DIR}/TC07_nginx_mtls_crl.log"
 
 # -------------------------------------------------------------------------
 # TC09: Comprehensive X.509v3 Profile Inspection (CA + 2 Services + 2 Users)

@@ -63,6 +63,8 @@ EOF
 
         openssl ca -config "${CONFIG_DIR}/intermediate-ca.cnf" \
             -gencrl -out "${INTER_DIR}/crl/inter.crl.pem"
+        openssl ca -config "${CONFIG_DIR}/root-ca.cnf" \
+            -gencrl -out "${ROOT_DIR}/crl/root.crl.pem"
 
         cp "${INTER_DIR}/certs/api_renew.crt" "${INTER_DIR}/certs/api.crt"
         cp "${INTER_DIR}/private/api_renew.key" "${INTER_DIR}/private/api.key"
@@ -73,6 +75,7 @@ EOF
         cat "${ARTIFACTS_CERTS}/api.crt" "${ARTIFACTS_CERTS}/inter-ca.crt" > "${ARTIFACTS_CERTS}/api.fullchain.crt"
         chmod 644 "${ARTIFACTS_CERTS}/api.fullchain.crt"
         cp "${INTER_DIR}/crl/inter.crl.pem" "${ARTIFACTS_CERTS}/inter.crl.pem"
+        cp "${ROOT_DIR}/crl/root.crl.pem" "${ARTIFACTS_CERTS}/root.crl.pem"
         cat "${INTER_DIR}/crl/inter.crl.pem" "${ROOT_DIR}/crl/root.crl.pem" > "${ARTIFACTS_CERTS}/ca-chain.crl.pem"
     else
         echo "[!] Renewal already demonstrated (api_old.crt exists); displaying current renewal verification."

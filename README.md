@@ -1,9 +1,15 @@
 # 🛡️ Đồ Án Môn Học An Ninh Mạng — Đề Tài 14: PKI Lab
 
-> **Trường**: Đại học Giao thông vận tải TP.HCM (UTH)  
-> **Môn học**: An ninh Mạng  
+> **Trường**: Đại học Giao thông vận tải TP.HCM (UTH) — **Khoa**: Công nghệ Số  
+> **Môn học**: An ninh Mạng — **Mã lớp**: `012012303804`  
 > **Giảng viên**: TS. Lê Quốc Tuấn  
-> **Đề tài 14**: **Xây dựng PKI thu nhỏ và quản lý vòng đời chứng thư**
+> **Nhóm thực hiện**: Nhóm 14 — **Đề tài 14**: **Xây dựng PKI thu nhỏ và quản lý vòng đời chứng thư**
+
+| Thành viên | MSSV | Vai trò |
+|---|---|---|
+| Lô Nguyễn Hoàng Long | `019206004121` | Kiến trúc / chuẩn bị |
+| Nguyễn Minh Hoàng | `082206001298` | Triển khai |
+| Phạm Văn Đạt | `051206011533` | Kiểm thử / minh chứng |
 
 ---
 

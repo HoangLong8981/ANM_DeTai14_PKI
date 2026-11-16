@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'rm -f /tmp/*_ext.cnf /tmp/rogue-ca.* /tmp/untrusted.csr' EXIT
 
 echo "=========================================================="
 echo "[*] Step 2: Issuing Certificates for Services and Users"
@@ -25,6 +26,7 @@ issue_server_cert() {
         echo "[!] Certificate ${name}.crt already exists, skipping re-issuance."
         cp "${INTER_DIR}/certs/${name}.crt" "${ARTIFACTS_CERTS}/${name}.crt"
         cp "${INTER_DIR}/private/${name}.key" "${ARTIFACTS_CERTS}/${name}.key"
+        chmod 600 "${ARTIFACTS_CERTS}/${name}.key"
         return 0
     fi
     
@@ -60,6 +62,7 @@ EOF
     chmod 644 "${INTER_DIR}/certs/${name}.crt"
     cp "${INTER_DIR}/certs/${name}.crt" "${ARTIFACTS_CERTS}/${name}.crt"
     cp "${INTER_DIR}/private/${name}.key" "${ARTIFACTS_CERTS}/${name}.key"
+    chmod 600 "${ARTIFACTS_CERTS}/${name}.key"
     echo "[✓] Issued ${domain} -> ${name}.crt"
 }
 
@@ -80,6 +83,7 @@ issue_client_cert() {
         echo "[!] Client certificate ${name}.crt already exists, skipping re-issuance."
         cp "${INTER_DIR}/certs/${name}.crt" "${ARTIFACTS_CERTS}/${name}.crt"
         cp "${INTER_DIR}/private/${name}.key" "${ARTIFACTS_CERTS}/${name}.key"
+        chmod 600 "${ARTIFACTS_CERTS}/${name}.key"
         return 0
     fi
 
@@ -109,6 +113,7 @@ EOF
     chmod 644 "${INTER_DIR}/certs/${name}.crt"
     cp "${INTER_DIR}/certs/${name}.crt" "${ARTIFACTS_CERTS}/${name}.crt"
     cp "${INTER_DIR}/private/${name}.key" "${ARTIFACTS_CERTS}/${name}.key"
+    chmod 600 "${ARTIFACTS_CERTS}/${name}.key"
     echo "[✓] Issued Client Certificate -> ${name}.crt"
 }
 
@@ -127,6 +132,7 @@ if [ -f "${INTER_DIR}/certs/untrusted.crt" ] && [ -f "${INTER_DIR}/private/untru
     echo "[!] Certificate untrusted.crt already exists, skipping re-issuance."
     cp "${INTER_DIR}/certs/untrusted.crt" "${ARTIFACTS_CERTS}/untrusted.crt"
     cp "${INTER_DIR}/private/untrusted.key" "${ARTIFACTS_CERTS}/untrusted.key"
+    chmod 600 "${ARTIFACTS_CERTS}/untrusted.key"
 else
 if [ ! -f "${INTER_DIR}/private/untrusted.key" ]; then
     openssl genrsa -out "${INTER_DIR}/private/untrusted.key" 2048
@@ -135,6 +141,7 @@ fi
 
 # Create an untrusted rogue CA
 openssl genrsa -out /tmp/rogue-ca.key 2048
+chmod 600 /tmp/rogue-ca.key
 openssl req -x509 -new -nodes -key /tmp/rogue-ca.key -sha256 -days 30 \
     -subj "/C=US/ST=Unknown/L=Unknown/O=Rogue Untrusted Entity/CN=Rogue Root CA" \
     -out /tmp/rogue-ca.crt
@@ -161,6 +168,7 @@ openssl x509 -req -in /tmp/untrusted.csr \
 chmod 644 "${INTER_DIR}/certs/untrusted.crt"
 cp "${INTER_DIR}/certs/untrusted.crt" "${ARTIFACTS_CERTS}/untrusted.crt"
 cp "${INTER_DIR}/private/untrusted.key" "${ARTIFACTS_CERTS}/untrusted.key"
+chmod 600 "${ARTIFACTS_CERTS}/untrusted.key"
 echo "[✓] Issued Untrusted Certificate -> untrusted.crt"
 fi
 

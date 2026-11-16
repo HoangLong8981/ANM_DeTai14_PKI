@@ -26,11 +26,12 @@ error /workspace/pki/intermediate/certs/api_old.crt: verification failed
 --- 7. Intermediate CA Database (index.txt) Snapshot ---
 V	271105015938Z		1000	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=secure.lab.local
 R	271105015938Z	261114062019Z,superseded	1001	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=api.lab.local
-V	271105015938Z		1002	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Alice/emailAddress=alice@lab.local
+R	271105015938Z	261114063506Z,keyCompromise	1002	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Alice/emailAddress=alice@lab.local
 V	200102000000Z		1003	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=expired.lab.local
 R	271105015939Z	261105015939Z,keyCompromise	1004	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=revoked.lab.local
 R	271114061502Z	261114061536Z,keyCompromise	1005	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Bob/emailAddress=bob@lab.local
 V	281113062019Z		1006	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Server/CN=api.lab.local
+V	271116033217Z		1007	unknown	/C=VN/ST=Ho Chi Minh/L=Ho Chi Minh City/O=UTH PKI Lab/OU=Engineering/CN=Alice/emailAddress=alice@lab.local
 
 --- 8. Live mTLS Verification Against Renewed api.lab.local Server Cert ---
 depth=2 C=VN, ST=Ho Chi Minh, L=Ho Chi Minh City, O=UTH PKI Lab, OU=Security Department, CN=UTH Root CA
@@ -43,11 +44,11 @@ Verify return code: 0 (ok)
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 200 OK
-100   228  100   228    0     0   1592      0 --:--:-- --:--:-- --:--:--  1605
+100   228  100   228    0     0   1987      0 --:--:-- --:--:-- --:--:--  2000
 Server: nginx/1.27.5
-Date: Sat, 14 Nov 2026 06:22:10 GMT
+Date: Mon, 16 Nov 2026 15:08:36 GMT
 Content-Type: application/json
 Content-Length: 228
 Connection: keep-alive
 
-{"status": 200, "message": "200 OK - mTLS Authenticated", "auth": "mTLS Authenticated", "client_dn": "emailAddress=alice@lab.local,CN=Alice,OU=Engineering,O=UTH PKI Lab,L=Ho Chi Minh City,ST=Ho Chi Minh,C=VN", "serial": "1002"}
+{"status": 200, "message": "200 OK - mTLS Authenticated", "auth": "mTLS Authenticated", "client_dn": "emailAddress=alice@lab.local,CN=Alice,OU=Engineering,O=UTH PKI Lab,L=Ho Chi Minh City,ST=Ho Chi Minh,C=VN", "serial": "1007"}

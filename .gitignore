@@ -2,3 +2,15 @@
 __pycache__/
 *.pyc
 ~$*.docx
+
+# Local IDE & Antigravity / AI assistant files (kept local, not on GitHub)
+.vscode/
+.agent/
+.agents/
+AGENTS.md
+MEMORY.md
+PROJECT_CONTEXT.md
+feature-map.md
+missing_sections.md
+skills/
+verify-and-eval.md

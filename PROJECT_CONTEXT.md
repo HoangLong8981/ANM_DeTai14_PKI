@@ -71,16 +71,15 @@
 | `tests/` | `run_all_tests.sh` (TC01–TC06), `run_extended_tests.sh` (TC07–TC09), `eval_rubric.sh` (10/10 grader on TC01–TC06 logs), `demo_report.sh` (interactive CLI demo menu). |
 | `artifacts/certs/` | Exported cert/key/CRL bundle (24 files: leaf certs, 8 `.key` files, `root-ca.crt`, `inter-ca.crt`, `ca-chain.crt`, `{secure,api}.fullchain.crt`, `root.crl.pem`, `inter.crl.pem`, `ca-chain.crl.pem`, `alice_1002_revoked.{crt,key}`). |
 | `artifacts/logs/` | 10 logs: `TC01_chain_verify.log` .. `TC06_revoked_crl.log`, `TC07_nginx_mtls_crl.log` (stale 14/11), `TC07_post_revocation_check.log` (current 16/11), `TC08_cert_renewal.log`, `TC09_cert_profiles_inspection.log`. |
-| `scripts/` | `generate_docx.py` (1480 lines, generates both `.docx` files), `generate_evidence_screenshots.py` (146 lines, PIL terminal renderer from `evidence_logs.txt`). |
-| `docs/report/` | Canonical location for `BaoCao_DeTai14_PKI_UTH.docx`, `PROJECT_ANM.docx`, and `images/image1.png`..`image13.png`. |
-| Root Docs & Metadata | `README.md`, `AGENTS.md`, `MEMORY.md`, `feature-map.md`, `verify-and-eval.md`, `missing_sections.md`, `evidence_logs.txt`, `.gitignore`, `.gitattributes`. |
+| `scripts/` | `generate_docx.py` (generates both `.docx` files), `generate_diagrams.py` (generates `arch_diagram.png` & `lifecycle_diagram.png`), `generate_evidence_screenshots.py`. |
+| `docs/report/` | Canonical location for `BaoCao_DeTai14_PKI_UTH.docx`, `PROJECT_ANM.docx`, and `images/` (13 screenshots + 2 diagrams). |
+| Root Docs & Metadata | `README.md`, `PROJECT_CONTEXT.md`, `evidence_logs.txt`, `.gitignore`, `.gitattributes`. *(Antigravity skill/agent files removed).* |
 | `.vscode/settings.json` | Office viewer association (`cweijan.officeViewer`). |
 
 ### 2.4. Exact Duplicate Files Map (Byte-for-Byte Identical SHA-256)
-- `BaoCao_DeTai14_PKI_UTH.docx` == `docs/report/BaoCao_DeTai14_PKI_UTH.docx` (`74a087b86eae89df...`)
-- `PROJECT_ANM.docx` == `docs/report/PROJECT_ANM.docx` (`ba960360c546eb7e...`)
-- `verify-and-eval.md` == `skills/verify-and-eval.md` (`06a55bfaaf567db2...`)
-- `.agent/skills/ieee-report-writer/SKILL.md` == `.agents/skills/ieee-report-writer/SKILL.md` (`e7f3c06e3b047d53...`)
+- `BaoCao_DeTai14_PKI_UTH.docx` == `docs/report/BaoCao_DeTai14_PKI_UTH.docx`
+- `PROJECT_ANM.docx` == `docs/report/PROJECT_ANM.docx`
+*(Duplicate `.agent/`, `.agents/`, `skills/`, `verify-and-eval.md` were removed).*
 
 ---
 
@@ -150,14 +149,12 @@
 - [ ] **Harden PKI & Python scripts:** Check `.key`+`.crt` atomically (`01_setup_ca.sh:39-76`); stop swallowing `04_renew_cert.sh` errors & save `api_old.key`; copy archive from `${CRT}` & parameterize `OU` (`05:33,52`); fix `init_all_pki.sh` to cover `*.conf` & remind Nginx reload; refactor `scripts/generate_evidence_screenshots.py`. *(Done: `awk -F'\t'` applied in `03_revoke_crl.sh` and `05_reissue_user.sh`).*
 - [ ] **Harden Nginx & Docker (`services/nginx/`, `docker-compose.yml`):** Enforce TLS 1.2 AEAD/PFS `ssl_ciphers` (`secure.conf:15-16`, `api.conf:16`), sanitize `$ssl_client_s_dn` in JSON (`api.conf:26`), remove or serve unused `services/nginx/html/index.html`, add `healthcheck:` & cert-ready guard for `web`, and avoid mounting private keys into `web`.
 - [ ] **Sync remaining Markdown/Log docs:**
-  - `AGENTS.md`: **(Done)** closed Mermaid fence, fixed `pki-client`, updated script/test list.
   - `README.md`: **(Done)** added Nhóm 14 3-member table (`KHOA CÔNG NGHỆ SỐ`, `012012303804`). *(Remaining: mention `Bob`, update directory tree, document `8443:443` & Avast loopback caveat).*
-  - `MEMORY.md`, `feature-map.md`, `verify-and-eval.md`, `evidence_logs.txt`: update `MEMORY.md` numbering & PR #1 lessons, update `feature-map.md` & `verify-and-eval.md` for `*.fullchain.crt`/`05_reissue_user.sh`/`TC07`–`TC09`, regenerate `evidence_logs.txt` post-PR#1.
+  - `evidence_logs.txt`: regenerate verbatim from post-PR#1 commands and strip internal `Worker 1 / Worker 2` comments (`7-8`).
 
 ### P3 — Cleanup & Repo Hygiene
-- [x] **Normalize line endings on `.md` files:** Converted `feature-map.md`, `verify-and-eval.md`, `skills/verify-and-eval.md` from CRLF to LF. *(Still optional: add `*.html text eol=lf` to `.gitattributes`).*
-- [ ] **Deduplicate mirrored files:** Decide single canonical location for `verify-and-eval.md` vs `skills/verify-and-eval.md`, root `*.docx` vs `docs/report/*.docx`, `.agent/` vs `.agents/`; archive or remove obsolete `missing_sections.md` (contains `Ghi chú biên tập` line `3`).
-- [ ] **Tighten `.gitignore` & Python hygiene:** Add `*.old` (OpenSSL backup files) and decide `.vscode/` policy; remove unused `import os` in `scripts/generate_docx.py:1`.
+- [x] **Remove Antigravity skill/agent scaffolding:** Removed `.agent/`, `.agents/`, `skills/`, `verify-and-eval.md`, `AGENTS.md`, `feature-map.md`, `MEMORY.md`, and `missing_sections.md`.
+- [ ] **Tighten `.gitignore` & Python hygiene:** Add `*.old` (OpenSSL backup files) and decide `.vscode/` policy; remove unused `import os` in `scripts/generate_docx.py:1`; optionally deduplicate root `*.docx` vs `docs/report/*.docx`.
 
 ---
 
